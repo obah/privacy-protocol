@@ -1,0 +1,239 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.30;
+
+import "./interfaces/IPrivacyProtocolPool.sol";
+import {IncrementalMerkleTree, Poseidon2} from "./IncrementalMerkleTree.sol";
+import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
+import {ReentrancyGuard} from "openzeppelin/utils/ReentrancyGuard.sol";
+import {IVerifier} from "./Verifier.sol";
+import {Ownable} from "openzeppelin/access/Ownable.sol";
+import {Clones} from "openzeppelin/proxy/Clones.sol";
+import {PrivacyProtocolProxy} from "./PrivacyProtocolProxy.sol";
+
+contract PrivacyProtocolPool is IPrivacyProtocolPool, IncrementalMerkleTree, ReentrancyGuard, Ownable {
+    using Clones for address;
+
+    IVerifier private s_verifier;
+    PrivacyProtocolProxy public immutable i_privacyProtocolProxyImplementation;
+
+    mapping(address tokenAddress => uint256 balance) public s_tokenBalances;
+    mapping(bytes32 commitments => bool isUsed) public s_commitments;
+    mapping(bytes32 nullifierHashes => bool isUsed) public s_nullifierHashes;
+    mapping(address tokenAddress => bool isSupported) public s_supportedTokens;
+
+    //need to track the returned funds per user
+    //we can use hash of secret
+    //how do I link the funds to the secret and then the user?
+    //a good way so far is spinning up a new contract for each user/action - this also helps with privacy
+
+    constructor(Poseidon2 _hasher, uint32 _merkleTreeDepth, IVerifier _verifier, address initialOwner)
+        IncrementalMerkleTree(_merkleTreeDepth, _hasher)
+        Ownable(initialOwner)
+    {
+        s_verifier = _verifier;
+        i_privacyProtocolProxyImplementation = new PrivacyProtocolProxy();
+    }
+
+    function deposit(address token, uint256 amount, bytes32 commitment) external nonReentrant {
+        if (s_commitments[commitment]) {
+            revert PrivacyProtocolPool__CommitmentAlreadyUsed(commitment);
+        }
+
+        if (amount <= 0) {
+            revert PrivacyProtocolPool__InvalidAmount();
+        }
+
+        if (!s_supportedTokens[token]) {
+            revert PrivacyProtocolPool__TokenNotSupported(token);
+        }
+
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        s_tokenBalances[token] += amount;
+
+        uint32 _insertedLeafIndex = _insert(commitment);
+        s_commitments[commitment] = true;
+
+        emit PrivacyProtocolPool__Deposit(token, commitment, amount, _insertedLeafIndex, block.timestamp);
+    }
+
+    function withdraw(
+        address token,
+        address recipient,
+        uint256 amount,
+        bytes32 nullifierHash,
+        bytes calldata proof,
+        bytes32 rootHash,
+        bytes32 calldataHash,
+        bytes32 newCommitment
+    ) external nonReentrant {
+        if (!isKnownRoot(rootHash)) {
+            revert PrivacyProtocolPool__InvalidRootHash(rootHash);
+        }
+
+        if (!s_supportedTokens[token]) {
+            revert PrivacyProtocolPool__TokenNotSupported(token);
+        }
+
+        bytes32[] memory publicInputs = new bytes32[](6);
+        publicInputs[0] = rootHash;
+        publicInputs[1] = nullifierHash;
+        publicInputs[2] = bytes32(uint256(uint160(recipient)));
+        publicInputs[3] = calldataHash;
+        publicInputs[4] = bytes32(amount);
+        publicInputs[5] = newCommitment;
+
+        bool isVerified = s_verifier.verify(proof, publicInputs);
+        if (!isVerified) {
+            revert PrivacyProtocolPool__InvalidProof();
+        }
+
+        //check nullifier hasnt been used
+        if (s_nullifierHashes[nullifierHash]) {
+            revert PrivacyProtocolPool__NullifierUsed(nullifierHash);
+        }
+
+        s_nullifierHashes[nullifierHash] = true;
+
+        IERC20(token).transfer(recipient, amount);
+        s_tokenBalances[token] -= amount;
+
+        // Insert the new commitment (change) into the tree
+        // Even if change is 0, we insert a commitment to maintain privacy (obscating that it's a full withdrawal)
+        // The circuit ensures that newCommitment is valid for the remaining amount
+        uint32 _insertedLeafIndex = _insert(newCommitment);
+        s_commitments[newCommitment] = true;
+
+        emit PrivacyProtocolPool__Withdrawal(
+            newCommitment, recipient, token, amount, _insertedLeafIndex, block.timestamp
+        );
+    }
+
+    function executeAction(ActionRequest calldata request) external nonReentrant returns (bool success) {
+        if (request.target == address(this)) {
+            revert PrivacyProtocolPool__ExecutionFailed();
+        }
+
+        if (!s_supportedTokens[request.token]) {
+            revert PrivacyProtocolPool__TokenNotSupported(request.token);
+        }
+
+        // Prevent calling approve/transfer on tokens directly to avoid draining the pool
+        if (request.data.length >= 4) {
+            bytes4 selector = bytes4(request.data[0:4]);
+            if (selector == IERC20.approve.selector || selector == IERC20.transfer.selector) {
+                revert PrivacyProtocolPool__ExecutionFailed();
+            }
+        }
+
+        if (!isKnownRoot(request.rootHash)) {
+            revert PrivacyProtocolPool__InvalidRootHash(request.rootHash);
+        }
+
+        bytes32[] memory publicInputs = new bytes32[](6);
+        publicInputs[0] = request.rootHash;
+        publicInputs[1] = request.nullifierHash;
+        publicInputs[2] = bytes32(uint256(uint160(request.target)));
+        publicInputs[3] = bytes32(uint256(keccak256(request.data)) >> 8);
+        publicInputs[4] = bytes32(request.amount);
+        publicInputs[5] = request.newCommitment;
+
+        if (!s_verifier.verify(request.proof, publicInputs)) {
+            revert PrivacyProtocolPool__InvalidProof();
+        }
+
+        if (s_nullifierHashes[request.nullifierHash]) {
+            revert PrivacyProtocolPool__NullifierUsed(request.nullifierHash);
+        }
+        s_nullifierHashes[request.nullifierHash] = true;
+
+        address proxy = address(i_privacyProtocolProxyImplementation).clone();
+        PrivacyProtocolProxy(proxy).initialize(request.actionId, address(this));
+
+        if (request.amount > 0) {
+            if (s_tokenBalances[request.token] < request.amount) {
+                revert PrivacyProtocolPool__InvalidAmount();
+            }
+            s_tokenBalances[request.token] -= request.amount;
+            IERC20(request.token).transfer(proxy, request.amount);
+        }
+
+        // Delegate execution to the proxy
+        PrivacyProtocolProxy(proxy).execute(request.token, request.amount, request.target, request.data);
+
+        // Success is implicitly true if execute didn't revert, as execute checks success
+        success = true;
+
+        _insert(request.newCommitment);
+        s_commitments[request.newCommitment] = true;
+
+        emit PrivacyProtocolPool__ActionExecuted(request.nullifierHash, proxy);
+    }
+
+    function isKnownRoot(bytes32 _root) public view returns (bool) {
+        if (_root == bytes32(0)) {
+            return false;
+        }
+
+        uint32 _currentIndex = s_currentRootIndex;
+        uint32 i = _currentIndex;
+
+        do {
+            if (_root == s_roots[i]) {
+                return true;
+            }
+
+            if (i == 0) {
+                i = ROOT_MAX_SIZE;
+            }
+            i--;
+        } while (i != _currentIndex);
+
+        return false;
+    }
+
+    function addSupportedToken(address token) external onlyOwner {
+        if (token == address(0)) {
+            revert PrivacyProtocolPool__AddressZero();
+        }
+
+        if (s_supportedTokens[token]) {
+            revert PrivacyProtocolPool__TokenSupported(token);
+        }
+
+        s_supportedTokens[token] = true;
+
+        emit PrivacyProtocolPool__TokenAdded(token, block.timestamp);
+    }
+
+    function removeSupportedToken(address token) external onlyOwner {
+        if (token == address(0)) {
+            revert PrivacyProtocolPool__AddressZero();
+        }
+
+        if (!s_supportedTokens[token]) {
+            revert PrivacyProtocolPool__TokenNotSupported(token);
+        }
+
+        s_supportedTokens[token] = false;
+
+        emit PrivacyProtocolPool__TokenRemoved(token, block.timestamp);
+    }
+
+    function isTokenSupported(address token) external view returns (bool) {
+        return s_supportedTokens[token];
+    }
+
+    function updateVerifier(address newVerifier) external onlyOwner {
+        if (newVerifier == address(0)) {
+            revert PrivacyProtocolPool__AddressZero();
+        }
+
+        s_verifier = IVerifier(newVerifier);
+
+        emit PrivacyProtocolPool__VerifierUpdated(newVerifier, block.timestamp);
+    }
+
+    function getVerifier() external view returns (address) {
+        return address(s_verifier);
+    }
+}
