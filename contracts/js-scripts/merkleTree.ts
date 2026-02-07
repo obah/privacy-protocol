@@ -1,14 +1,15 @@
 import { Barretenberg, Fr } from "@aztec/bb.js";
 
-let bbInstance;
-async function getBb() {
+let bbInstance: Barretenberg | undefined;
+
+async function getBb(): Promise<Barretenberg> {
   if (!bbInstance) {
     bbInstance = await Barretenberg.new();
   }
   return bbInstance;
 }
 
-async function hashLeftRight(left, right) {
+async function hashLeftRight(left: string, right: string): Promise<string> {
   const bb = await getBb();
   const frLeft = Fr.fromString(left);
   const frRight = Fr.fromString(right);
@@ -17,7 +18,13 @@ async function hashLeftRight(left, right) {
 }
 
 export class PoseidonTree {
-  constructor(levels, zeros) {
+  levels: number;
+  hashLeftRight: (left: string, right: string) => Promise<string>;
+  storage: Map<string, string>;
+  zeros: string[];
+  totalLeaves: number;
+
+  constructor(levels: number, zeros: string[]) {
     if (zeros.length < levels + 1) {
       throw new Error(
         "Not enough zero values provided for the given tree height.",
@@ -30,7 +37,7 @@ export class PoseidonTree {
     this.totalLeaves = 0;
   }
 
-  async init(defaultLeaves = []) {
+  async init(defaultLeaves: string[] = []): Promise<void> {
     if (defaultLeaves.length > 0) {
       this.totalLeaves = defaultLeaves.length;
 
@@ -54,11 +61,11 @@ export class PoseidonTree {
     }
   }
 
-  static indexToKey(level, index) {
+  static indexToKey(level: number, index: number): string {
     return `${level}-${index}`;
   }
 
-  getIndex(leaf) {
+  getIndex(leaf: string): number {
     for (const [key, value] of this.storage.entries()) {
       if (value === leaf && key.startsWith("0-")) {
         return parseInt(key.split("-")[1]);
@@ -67,19 +74,24 @@ export class PoseidonTree {
     return -1;
   }
 
-  root() {
+  root(): string {
     return (
       this.storage.get(PoseidonTree.indexToKey(this.levels, 0)) ||
       this.zeros[this.levels]
     );
   }
 
-  proof(index) {
+  proof(index: number): {
+    root: string;
+    pathElements: string[];
+    pathIndices: number[];
+    leaf: string;
+  } {
     const leaf = this.storage.get(PoseidonTree.indexToKey(0, index));
     if (!leaf) throw new Error("leaf not found");
 
-    const pathElements = [];
-    const pathIndices = [];
+    const pathElements: string[] = [];
+    const pathIndices: number[] = [];
 
     this.traverse(index, (level, currentIndex, siblingIndex) => {
       const sibling =
@@ -97,20 +109,20 @@ export class PoseidonTree {
     };
   }
 
-  async insert(leaf) {
+  async insert(leaf: string): Promise<void> {
     const index = this.totalLeaves;
     await this.update(index, leaf, true);
     this.totalLeaves++;
   }
 
-  async update(index, newLeaf, isInsert = false) {
+  async update(index: number, newLeaf: string, isInsert: boolean = false): Promise<void> {
     if (!isInsert && index >= this.totalLeaves) {
       throw Error("Use insert method for new elements.");
     } else if (isInsert && index < this.totalLeaves) {
       throw Error("Use update method for existing elements.");
     }
 
-    const keyValueToStore = [];
+    const keyValueToStore: { key: string; value: string }[] = [];
     let currentElement = newLeaf;
 
     await this.traverseAsync(
@@ -138,7 +150,10 @@ export class PoseidonTree {
     keyValueToStore.forEach(({ key, value }) => this.storage.set(key, value));
   }
 
-  traverse(index, fn) {
+  traverse(
+    index: number,
+    fn: (level: number, currentIndex: number, siblingIndex: number) => void
+  ): void {
     let currentIndex = index;
     for (let level = 0; level < this.levels; level++) {
       const siblingIndex =
@@ -148,7 +163,14 @@ export class PoseidonTree {
     }
   }
 
-  async traverseAsync(index, fn) {
+  async traverseAsync(
+    index: number,
+    fn: (
+      level: number,
+      currentIndex: number,
+      siblingIndex: number
+    ) => Promise<void>
+  ): Promise<void> {
     let currentIndex = index;
     for (let level = 0; level < this.levels; level++) {
       const siblingIndex =
@@ -204,7 +226,7 @@ const ZERO_VALUES = [
   "0x207c726d331c3499c31fe085a5ce7f4dff27362f5344cc7b751b4b1c5b9f1cb0",
 ];
 
-export async function merkleTree(leaves) {
+export async function merkleTree(leaves: string[]): Promise<PoseidonTree> {
   const TREE_HEIGHT = 20;
   const tree = new PoseidonTree(TREE_HEIGHT, ZERO_VALUES);
 
