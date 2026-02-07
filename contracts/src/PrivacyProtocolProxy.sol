@@ -7,15 +7,15 @@ import {IPrivacyProtocolProxy} from "./interfaces/IPrivacyProtocolProxy.sol";
 
 contract PrivacyProtocolProxy is Initializable, IPrivacyProtocolProxy {
     bytes32 public override s_actionId;
-    address public override s_fanPool;
+    address public override s_privacyProtocolPool;
 
-    function initialize(bytes32 _actionId, address _fanPool) external override initializer {
+    function initialize(bytes32 _actionId, address _privacyProtocolPool) external override initializer {
         s_actionId = _actionId;
-        s_fanPool = _fanPool;
+        s_privacyProtocolPool = _privacyProtocolPool;
     }
 
     function execute(address token, uint256 amount, address target, bytes calldata data) external override {
-        if (msg.sender != s_fanPool) {
+        if (msg.sender != s_privacyProtocolPool) {
             revert PrivacyProtocolProxy__Unauthorized();
         }
 

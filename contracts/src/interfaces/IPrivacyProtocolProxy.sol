@@ -10,7 +10,7 @@ interface IPrivacyProtocolProxy {
     event ActionExecuted(address indexed target, bool success);
     event FundsWithdrawn(address indexed token, address indexed recipient, uint256 amount);
 
-    function initialize(bytes32 _actionId, address _fanPool) external;
+    function initialize(bytes32 _actionId, address _privacyProtocolPool) external;
 
     function execute(address token, uint256 amount, address target, bytes calldata data) external;
 
@@ -18,5 +18,5 @@ interface IPrivacyProtocolProxy {
 
     function s_actionId() external view returns (bytes32);
 
-    function s_fanPool() external view returns (address);
+    function s_privacyProtocolPool() external view returns (address);
 }

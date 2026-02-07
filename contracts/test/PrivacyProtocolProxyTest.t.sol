@@ -53,7 +53,7 @@ contract PrivacyProtocolProxyTest is Test {
 
     function testInitialize() public view {
         assertEq(proxy.s_actionId(), actionId);
-        assertEq(proxy.s_fanPool(), pool);
+        assertEq(proxy.s_privacyProtocolPool(), pool);
     }
 
     function testCannotInitializeTwice() public {
@@ -65,21 +65,21 @@ contract PrivacyProtocolProxyTest is Test {
                                 EXECUTE
     //////////////////////////////////////////////////////////////*/
 
-    function testExecute_RevertIfUnauthorized() public {
+    function testExecuteRevertIfUnauthorized() public {
         vm.prank(user);
         vm.expectRevert(IPrivacyProtocolProxy.PrivacyProtocolProxy__Unauthorized.selector);
         proxy.execute(address(0), 0, address(target), abi.encodeWithSelector(MockTarget.mockCall.selector));
     }
 
-    function testExecute_Success() public {
+    function testExecuteSuccess() public {
         vm.prank(pool);
         vm.expectEmit(true, true, true, true);
         emit IPrivacyProtocolProxy.ActionExecuted(address(target), true);
-        
+
         proxy.execute(address(0), 0, address(target), abi.encodeWithSelector(MockTarget.mockCall.selector));
     }
 
-    function testExecute_WithTokens() public {
+    function testExecuteWithTokens() public {
         uint256 amount = 100 ether;
         token.mint(address(proxy), amount);
 
@@ -95,7 +95,7 @@ contract PrivacyProtocolProxyTest is Test {
         assertEq(token.balanceOf(address(proxy)), 0);
     }
 
-    function testExecute_RevertIfExecutionFailed() public {
+    function testExecuteRevertIfExecutionFailed() public {
         vm.prank(pool);
         vm.expectRevert(IPrivacyProtocolProxy.PrivacyProtocolProxy__ExecutionFailed.selector);
         proxy.execute(address(0), 0, address(target), abi.encodeWithSelector(MockTarget.mockRevert.selector));
@@ -105,7 +105,7 @@ contract PrivacyProtocolProxyTest is Test {
                                 WITHDRAW
     //////////////////////////////////////////////////////////////*/
 
-    function testWithdraw_Success() public {
+    function testWithdrawSuccess() public {
         uint256 amount = 50 ether;
         token.mint(address(proxy), amount);
 
@@ -115,7 +115,7 @@ contract PrivacyProtocolProxyTest is Test {
         assertEq(token.balanceOf(address(proxy)), 0);
     }
 
-    function testWithdraw_RevertIfInvalidSecret() public {
+    function testWithdrawRevertIfInvalidSecret() public {
         uint256 amount = 50 ether;
         token.mint(address(proxy), amount);
         bytes32 wrongSecret = keccak256("wrong");
@@ -124,7 +124,7 @@ contract PrivacyProtocolProxyTest is Test {
         proxy.withdraw(address(token), user, wrongSecret);
     }
 
-    function testWithdraw_NoBalance() public {
+    function testWithdrawNoBalance() public {
         // Should not revert but transfer 0
         proxy.withdraw(address(token), user, secret);
         assertEq(token.balanceOf(user), 0);
