@@ -15,3 +15,5 @@ contracts/docs/
 
 # Circuits
 /circuits/target
+
+/node_modules
