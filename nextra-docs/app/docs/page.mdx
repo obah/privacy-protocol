@@ -1,0 +1,69 @@
+import { Callout, Tabs, Steps } from "nextra/components";
+import { Shield, Zap, Lock } from "lucide-react";
+
+# Privacy Protocol SDK
+
+**Privacy Protocol** is the modular privacy layer for the EVM. Powered by zero-knowledge proofs, it enables developers to seamlessly integrate privacy into any dApp without sacrificing composability.
+
+<Callout type="info" emoji="👻">
+  **New Release:** The SDK now supports **Arbitrum Stylus** and **Optimism**.
+  Check the [Changelog](/changelog) for details.
+</Callout>
+
+## Quick Start
+
+Get up and running in less than 5 minutes.
+
+<Tabs items={["npm", "yarn", "pnpm"]}>
+  <Tabs.Tab>```bash npm install @ghostly/sdk @ghostly/react ```</Tabs.Tab>
+  <Tabs.Tab>```bash yarn add @ghostly/sdk @ghostly/react ```</Tabs.Tab>
+  <Tabs.Tab>```bash pnpm add @ghostly/sdk @ghostly/react ```</Tabs.Tab>
+</Tabs>
+
+## How It Works
+
+<Steps>
+### Install and Enable
+Install the SDK to wrap standard wallets. Enable shielded transactions with zero changes to your backend logic.
+
+### Client-Side Proving
+
+The SDK abstracts ZK complexity, generating local proofs (Noir/bb.js) to authorize intents without revealing the signer's identity.
+
+### Relayed Execution
+
+Proofs are verified on-chain. The protocol executes calls to your contract via a fresh, **ephemeral proxy**.
+
+### Composable Settlement
+
+Execute standard logic (mint, swap). Outputs are automatically routed back to the user's shielded balance via the UTXO model.
+
+</Steps>
+
+## Next Steps
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+  <a
+    href="/docs/guides/integration"
+    className="p-4 border rounded-lg hover:border-blue-500 transition-colors"
+  >
+    <div className="flex items-center gap-2 font-bold mb-2">
+      <Shield className="w-5 h-5" /> Integration Guide
+    </div>
+    <p className="text-gray-500 text-sm">
+      Learn how to add the `useShield` hook to your dApp.
+    </p>
+  </a>
+
+  <a
+    href="/docs/core-sdk"
+    className="p-4 border rounded-lg hover:border-blue-500 transition-colors"
+  >
+    <div className="flex items-center gap-2 font-bold mb-2">
+      <Zap className="w-5 h-5" /> Core SDK Reference
+    </div>
+    <p className="text-gray-500 text-sm">
+      Low-level API for backend bots and scripts.
+    </p>
+  </a>
+</div>

@@ -17,3 +17,4 @@ contracts/docs/
 /circuits/target
 
 /node_modules
+nextra-docs/node_modules
