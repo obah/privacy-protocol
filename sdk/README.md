@@ -15,13 +15,13 @@ npm install ethers @aztec/bb.js @noir-lang/noir_js
 ### Initialization
 
 ```typescript
-import { PrivacyProtocolPoolSDK } from "./sdk";
+import { PrivacyProtocolSDK } from "./sdk";
 import circuit from "./sdk/circuits.json" assert { type: "json" };
 
 const provider = new ethers.JsonRpcProvider("RPC_URL");
 const contractAddress = "DEPLOYED_CONTRACT_ADDRESS";
 
-const sdk = new PrivacyProtocolPoolSDK(provider, contractAddress, circuit);
+const sdk = new PrivacyProtocolSDK(provider, contractAddress, circuit);
 ```
 
 ### Deposit
