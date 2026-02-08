@@ -5,6 +5,7 @@ import { ArrowRight, Copy, Check } from "lucide-react";
 import { useState } from "react";
 import { AuroraBackground } from "./ui/aurora-background";
 import { AnimatedText } from "./ui/animated-text";
+import Link from "next/link";
 
 export const HeroSection = () => {
   const [copied, setCopied] = useState(false);
@@ -91,13 +92,17 @@ export const HeroSection = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
           >
-            <button className="group bg-foreground text-background relative flex items-center gap-2 rounded-sm px-8 py-3 text-lg font-semibold transition-all hover:cursor-pointer hover:opacity-90">
+            <Link
+              href="https://privacy-protocol.gitbook.io/privacy-protocol-docs"
+              target="_blank"
+              className="group bg-foreground text-background relative flex items-center gap-2 rounded-sm px-8 py-3 text-lg font-semibold transition-all hover:cursor-pointer hover:opacity-90"
+            >
               Get Started
               <ArrowRight
                 size={18}
                 className="transition-transform group-hover:translate-x-1"
               />
-            </button>
+            </Link>
           </motion.div>
         </div>
       </motion.section>
