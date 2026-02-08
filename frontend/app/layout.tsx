@@ -14,9 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Privacy Protocol | Private Middleware for dApps",
-  description:
-    "Seamlessly integrate privacy into your dApp with Privacy Protocol middleware.",
+  title: "Privacy Protocol",
+  description: "Private Middleware for dApps",
 };
 
 export default function RootLayout({
@@ -31,7 +30,7 @@ export default function RootLayout({
       >
         <ThemeProvider
           attribute="class"
-          defaultTheme="light"
+          defaultTheme="dark"
           enableSystem={false}
         >
           {children}
