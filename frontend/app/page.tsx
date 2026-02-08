@@ -1,19 +1,21 @@
 import { Navbar } from "@/components/Navbar";
 import { HeroSection } from "@/components/HeroSection";
 import { FeaturesSection } from "@/components/sections/FeaturesSection";
-import { HowItWorksSection } from "@/components/sections/HowItWorksSection";
+import { HowItWorksSectionDevs } from "@/components/sections/HowItWorksSectionDevs";
+import { HowItWorksSectionUsers } from "@/components/sections/HowItWorksSectionUsers";
 import { HowToUseSection } from "@/components/sections/HowToUseSection";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-background text-foreground transition-colors duration-300">
+    <main className="bg-background text-foreground min-h-screen transition-colors duration-300">
       <Navbar />
       <HeroSection />
-      <HowItWorksSection />
+      <HowItWorksSectionDevs />
+      <HowItWorksSectionUsers />
       <FeaturesSection />
       <HowToUseSection />
 
-      <footer className="py-12 border-t border-white/10 text-center text-muted-foreground glass">
+      <footer className="text-muted-foreground glass border-t border-white/10 py-12 text-center">
         <p>
           &copy; {new Date().getFullYear()} Privacy Protocol. All rights
           reserved.

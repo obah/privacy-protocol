@@ -25,6 +25,15 @@ export const HeroSection = () => {
     "Web3 infra",
   ];
 
+  const colors = [
+    "text-green-500",
+    "text-emerald-500",
+    "text-teal-500",
+    "text-cyan-500",
+    "text-lime-500",
+    "text-green-400",
+  ];
+
   return (
     <AuroraBackground>
       <motion.section
@@ -51,8 +60,9 @@ export const HeroSection = () => {
               <p className="inline">The best way to add privacy to your </p>
               <AnimatedText
                 texts={rotatingTexts}
-                className="text-green-500"
-                duration={2500}
+                colors={colors}
+                className="ml-3"
+                duration={1500}
               />
             </div>
           </motion.div>

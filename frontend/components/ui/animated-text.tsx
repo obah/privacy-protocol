@@ -1,16 +1,19 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 
 interface AnimatedTextProps {
   texts: string[];
+  colors?: string[];
   className?: string;
   duration?: number;
 }
 
 export const AnimatedText = ({
   texts,
+  colors,
   className,
   duration = 2000,
 }: AnimatedTextProps) => {
@@ -22,6 +25,8 @@ export const AnimatedText = ({
     }, duration);
     return () => clearInterval(interval);
   }, [texts.length, duration]);
+
+  const currentColor = colors ? colors[index % colors.length] : "";
 
   return (
     <div className=" inline-block w-fit overflow-hidden align-bottom">
@@ -36,7 +41,7 @@ export const AnimatedText = ({
             opacity: { duration: 0.3 },
             filter: { duration: 0.3 },
           }}
-          className={className}
+          className={cn(className, currentColor)}
         >
           {texts[index]}
         </motion.span>
