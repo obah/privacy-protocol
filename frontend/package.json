@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.20",
+    "@wagmi/connectors": "^7.1.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "connectkit": "^1.9.1",
