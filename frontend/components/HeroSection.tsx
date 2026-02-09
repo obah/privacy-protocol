@@ -24,6 +24,8 @@ export const HeroSection = () => {
     "Prediction Market",
     "Perps",
     "Web3 infra",
+    "AI agents",
+    "Next project",
   ];
 
   const colors = [
@@ -31,6 +33,8 @@ export const HeroSection = () => {
     "text-emerald-500",
     "text-teal-500",
     "text-cyan-500",
+    "text-blue-500",
+    "text-lime-300",
     "text-lime-500",
     "text-green-400",
   ];

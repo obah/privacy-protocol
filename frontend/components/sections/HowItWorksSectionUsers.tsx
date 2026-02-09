@@ -44,11 +44,13 @@ export function HowItWorksSectionUsers() {
           <h2 className="mb-4 text-3xl font-bold text-white sm:text-4xl">
             How It Works (For Users)
           </h2>
-          <p className="mx-auto max-w-3xl text-lg text-white">
-            Privacy Protocol is the modular privacy layer for the EVM. Powered
-            by zero-knowledge proofs, it enables developers to seamlessly
-            integrate privacy into their existing and new dApps without
-            sacrificing composability or breaking the UX of their dApps.
+          <p className="text-muted-foreground mt-4 text-sm tracking-wide text-balance md:text-base">
+            Created with your user's experience in mind. Privacy Protocol acts
+            as an invisible shield over your existing workflow. Instead of
+            navigating complex mixers or fragmented Layer 2s, users can interact
+            with their favorite dApps with the same speed and ease they are used
+            to, all while their identity and actions remain mathematically
+            private.
           </p>
         </motion.div>
 
@@ -74,7 +76,7 @@ export function HowItWorksSectionUsers() {
                 />
                 <div className="bg-background relative flex h-full flex-col justify-between gap-6 overflow-hidden rounded-xl border-[0.75px] border-cyan-500/20 p-6 shadow-sm md:p-6 dark:shadow-[0px_0px_27px_0px_rgba(45,45,45,0.3)]">
                   <div className="relative flex flex-1 flex-col justify-between gap-3">
-                    <div className="text-cyan-500/20 mb-4 text-5xl font-bold">
+                    <div className="mb-4 text-5xl font-bold text-cyan-500/20">
                       {step.number}
                     </div>
                     <div className="space-y-3">

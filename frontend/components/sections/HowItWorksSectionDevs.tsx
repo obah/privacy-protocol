@@ -44,7 +44,7 @@ export function HowItWorksSectionDevs() {
           <h2 className="mb-4 text-3xl font-bold text-white sm:text-4xl">
             How It Works (For Developers)
           </h2>
-          <p className="mx-auto max-w-3xl text-lg text-white">
+          <p className="text-muted-foreground mt-4 text-sm tracking-wide text-balance md:text-base">
             Privacy Protocol is the modular privacy layer for the EVM. Powered
             by zero-knowledge proofs, it enables developers to seamlessly
             integrate privacy into their existing and new dApps without

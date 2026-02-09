@@ -1,100 +1,45 @@
 "use client";
 
 import { motion } from "framer-motion";
-import {
-  Shield,
-  Code,
-  Layers,
-  Zap,
-  Lock,
-  RefreshCw,
-  Coins,
-} from "lucide-react";
+import { Shield, Code, Zap, Lock, RefreshCw, Coins } from "lucide-react";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
-
-// const features = [
-//   {
-//     icon: Shield,
-//     title: "Zero-Knowledge Privacy",
-//     description:
-//       "Powered by Noir circuits and Aztec's bb.js, ensuring your transactions remain completely confidential.",
-//   },
-//   {
-//     icon: Code,
-//     title: "No Contract Changes",
-//     description:
-//       "Integrate privacy without modifying existing smart contracts. Works as a middleware layer.",
-//   },
-//   {
-//     icon: Layers,
-//     title: "EVM Compatible",
-//     description:
-//       "Deploy on any EVM-compatible chain. One SDK for Ethereum, Polygon, Arbitrum, and more.",
-//   },
-//   {
-//     icon: Zap,
-//     title: "Proxy Execution",
-//     description:
-//       "Actions execute through unique proxy contracts, breaking the link between deposits and actions.",
-//   },
-//   {
-//     icon: Lock,
-//     title: "Double-Spend Protection",
-//     description:
-//       "Nullifier-based system prevents double-spending while maintaining full privacy.",
-//   },
-//   {
-//     icon: RefreshCw,
-//     title: "UTXO Model",
-//     description:
-//       "Partial withdrawals create new commitments, allowing flexible fund management.",
-//   },
-// ];
 
 const features = [
   {
-    icon: Shield,
-    title: "Client-Side Proving",
+    icon: Code,
+    title: "Universal SDK",
     description:
-      "Proofs are generated entirely in the browser using Noir & bb.js, ensuring user secrets never leave their device.This maximizes security.",
+      "A lightweight npm package that wraps standard wallet providers (Wagmi/Viem) and abstracts complex circuit generation into simple async functions.",
   },
   {
-    icon: Code,
-    title: "Zero-Change Integration",
+    icon: Shield,
+    title: "Browser-Native Proving",
     description:
-      "Plug-and-play middleware that works with your existing code. No need to rewrite your protocol's frontend/backend/smart contracts logic, drastically reducing development time and audit costs.",
+      "Utilizes Aztec's bb.js and Noir to generate SNARKs directly in the browser memory, eliminating the need for trusted server-side proving.",
   },
-  // {
-  //   icon: Layers,
-  //   title: "Chain Agnostic",
-  //   description:
-  //     "Write once, deploy anywhere. Compatible with Ethereum, Arbitrum, Optimism, and any EVM-standard chain.",
-  //   benefit:
-  //     "Expands your dApp's addressable market to the entire EVM ecosystem without fragmentation.",
-  // },
   {
     icon: Zap,
-    title: "Relayer Execution",
+    title: "Ephemeral Relayer Network",
     description:
-      "Transactions are dispatched via ephemeral proxies, completely severing the link between the depositor and the action. Also protects non financial actions like voting etc.",
-  },
-  {
-    icon: Lock,
-    title: "Future-Proof Compliance",
-    description:
-      "Regulatory-friendly privacy layer that currently prevents double-spending via nullifiers. And coming soon - 'Proof of Innocence' and zk-KYC circuits to verify fund legitimacy without revealing identity.",
+      "A decentralized network of relayers that deploy fresh proxy contracts for every transaction, ensuring on-chain unlinkability.",
   },
   {
     icon: RefreshCw,
-    title: "Liquid Privacy",
+    title: "Encrypted UTXO State",
     description:
-      "UTXO-based fund management allows for partial spends and fluid interaction, unlike rigid 'deposit-and-withdraw' mixers. Allows users spend just a portion of their shielded balance.",
+      "Manages user balances using an encrypted Note model, allowing for precise state updates and partial spending.",
+  },
+  {
+    icon: Lock,
+    title: "Nullifier Registry",
+    description:
+      "On-chain storage of spent nullifiers to mathematically prevent double-spending without revealing the spender's identity.",
   },
   {
     icon: Coins,
-    title: "Smart Return Routing",
+    title: "Yield-Aware Vaults",
     description:
-      "Automatically tracks and routes contract outputs (like winnings or swap results) back to the user's encrypted state, eliminating the need for manual 'claim' steps, giving users a seamless experience.",
+      "Smart contract vaults that hold the shielded assets and can be extended to earn yield on Aave/Compound while funds sit idle.",
   },
 ];
 
@@ -113,8 +58,8 @@ export function FeaturesSection() {
             Features
           </h2>
           <p className="mx-auto max-w-3xl text-lg text-white">
-            Everything you need to add privacy to your dApp, built with modern
-            cryptography.
+            Complete suite of zero-knowledge primitives designed to make privacy
+            as standard as a token transfer.
           </p>
         </motion.div>
 
