@@ -122,7 +122,7 @@ const benefits = [
     title: "Ship in Minutes, Not Months",
     icon: Zap,
     description:
-      "Skip the steep learning curve of ZK circuits. Integrate enterprise-grade privacy with just 3 lines of code.",
+      "Skip the steep learning curve of ZK circuits. Integrate enterprise-grade privacy with just few lines of code.",
   },
   {
     title: "Tap Into Deep Liquidity",
