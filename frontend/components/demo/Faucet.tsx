@@ -6,13 +6,16 @@ import { Input } from "@/components/ui/input";
 
 export default function Faucet() {
   return (
-    <Card className="border-border/50 bg-background/40 w-full max-w-md shadow-2xl backdrop-blur-xl">
+    <Card className="border-border/50 bg-background/40 mx-auto w-full max-w-lg shadow-2xl backdrop-blur-xl dark:border-green-100/50">
       <CardHeader>
         <CardTitle>Faucet</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <Input placeholder="Enter your wallet address to claim test tokens" />
-        <Button className="w-full">Claim</Button>
+        <Input
+          placeholder="Enter your wallet address to claim tokens for swapping and voting"
+          className="h-12 w-full"
+        />
+        <Button className="h-12 w-full">Claim</Button>
       </CardContent>
     </Card>
   );

@@ -63,7 +63,7 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(0.985 0 0);
+  --background: oklch(100% 0.00011 271.152);
   --foreground: oklch(0.13 0.02 260);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.13 0.02 260);
@@ -141,7 +141,7 @@
 
 @layer utilities {
   .glass {
-    @apply bg-background/50 backdrop-blur-md border border-white/10 shadow-lg;
+    @apply bg-background/50 border border-white/10 shadow-lg backdrop-blur-md;
   }
 
   @keyframes border-trace {

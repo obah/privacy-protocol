@@ -67,7 +67,7 @@ export const Navbar = () => {
           </div>
         ) : (
           <Link
-            href="/demo/dao"
+            href="/demo"
             className={buttonVariants({ size: "lg", className: "h-11 px-7" })}
           >
             Try it now <ArrowRight size={16} />
