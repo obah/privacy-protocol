@@ -68,7 +68,7 @@ const { txHash, newSecret, newNullifier, proxyAddress } =
     amountToSpend,
     targetContractAddress,
     encodedCallData,
-    actionId, // Unique ID for action
+    ethers.keccak256(secret), // Must be keccak256(secret)
     secret,
     nullifier,
     totalAmountInPool,

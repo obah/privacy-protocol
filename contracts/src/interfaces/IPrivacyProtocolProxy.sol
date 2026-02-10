@@ -6,6 +6,7 @@ interface IPrivacyProtocolProxy {
     error PrivacyProtocolProxy__Unauthorized();
     error PrivacyProtocolProxy__ExecutionFailed();
     error PrivacyProtocolProxy__TransferFailed();
+    error PrivacyProtocolProxy__AddressZero();
 
     event ActionExecuted(address indexed target, bool success);
     event FundsWithdrawn(address indexed token, address indexed recipient, uint256 amount);

@@ -9,6 +9,7 @@ const RPC_URL = "http://127.0.0.1:8545";
 const PRIVACY_PROTOCOL_POOL_ADDRESS =
   process.env.PRIVACY_PROTOCOL_POOL_ADDRESS || "";
 const TOKEN_ADDRESS = process.env.TOKEN_ADDRESS || "";
+const DEMO_DEFI_ADDRESS = process.env.DEMO_DEFI_ADDRESS || "";
 
 async function main() {
   if (!PRIVACY_PROTOCOL_POOL_ADDRESS || !TOKEN_ADDRESS) {
@@ -35,12 +36,30 @@ async function main() {
     "function mint(address to, uint256 amount) external",
   ];
   const tokenContract = new ethers.Contract(TOKEN_ADDRESS, erc20Abi, wallet);
+  const demoDefiAbi = ["function faucet() external"];
+  const demoDefi = DEMO_DEFI_ADDRESS
+    ? new ethers.Contract(DEMO_DEFI_ADDRESS, demoDefiAbi, wallet)
+    : undefined;
 
   console.log("\n--- Starting Deposit ---");
-  const depositAmount = ethers.parseEther("1.0");
+  const depositAmount = ethers.parseEther("100.0");
 
-  const balance = await tokenContract.balanceOf(wallet.address);
+  let balance = await tokenContract.balanceOf(wallet.address);
   console.log(`Initial Token Balance: ${ethers.formatEther(balance)}`);
+
+  if (balance < depositAmount && demoDefi) {
+    console.log("Requesting demo faucet...");
+    await (await demoDefi.faucet()).wait();
+    balance = await tokenContract.balanceOf(wallet.address);
+    console.log(`Token Balance after faucet: ${ethers.formatEther(balance)}`);
+  }
+
+  if (balance < depositAmount) {
+    console.log("Minting test tokens...");
+    await (await tokenContract.mint(wallet.address, depositAmount)).wait();
+    balance = await tokenContract.balanceOf(wallet.address);
+    console.log(`Token Balance after mint: ${ethers.formatEther(balance)}`);
+  }
 
   console.log("Approving token...");
   await (
@@ -54,6 +73,9 @@ async function main() {
     wallet,
   );
   console.log(`Deposit successful! Tx: ${txHash}`);
+  console.log(`Amount deposited: ${ethers.formatEther(depositAmount)}`);
+  balance = await tokenContract.balanceOf(wallet.address);
+  console.log(`New balance: ${ethers.formatEther(balance)}`);
   console.log(`Secret: ${secret}`);
   console.log(`Nullifier: ${nullifier}`);
 
@@ -76,6 +98,9 @@ async function main() {
       wallet,
     );
     console.log(`Withdrawal successful! Tx: ${withdrawRes.txHash}`);
+    console.log(`Amount withdrawn: ${ethers.formatEther(depositAmount)}`);
+    balance = await tokenContract.balanceOf(wallet.address);
+    console.log(`New balance: ${ethers.formatEther(balance)}`);
     console.log(`New Secret: ${withdrawRes.newSecret}`);
     console.log(`New Nullifier: ${withdrawRes.newNullifier}`);
   } catch (error) {

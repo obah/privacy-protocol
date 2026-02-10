@@ -119,7 +119,7 @@ async executeAction(
 
 -   `target`: The target contract address to call.
 -   `data`: The calldata for the transaction.
--   `actionId`: A unique identifier for this action (to prevent replay).
+-   `actionId`: Must be `keccak256(secret)` so proxy withdrawal can be authorized with that secret.
 -   **Returns**: `Promise<ExecutionResult>` containing the new note details and the deployed proxy address.
 
 ---

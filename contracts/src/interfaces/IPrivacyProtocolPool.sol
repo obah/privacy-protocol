@@ -14,6 +14,19 @@ interface IPrivacyProtocolPool {
     error PrivacyProtocolPool__InvalidRootHash(bytes32 rootHash);
     error PrivacyProtocolPool__NullifierUsed(bytes32 nullifierHash);
     error PrivacyProtocolPool__TokenSupported(address token);
+    error PrivacyProtocolPool__InvalidRecipient(address recipient);
+    error PrivacyProtocolPool__InsufficientBalance(
+        address token,
+        uint256 requested,
+        uint256 available
+    );
+    error PrivacyProtocolPool__UnsupportedTokenBehavior(
+        address token,
+        uint256 expected,
+        uint256 received
+    );
+    error PrivacyProtocolPool__TargetIsToken(address token);
+    error PrivacyProtocolPool__InvalidVerifier(address verifier);
 
     /*//////////////////////////////////////////////////////////////
                                 EVENTS
@@ -27,7 +40,10 @@ interface IPrivacyProtocolPool {
         uint256 timestamp
     );
 
-    event PrivacyProtocolPool__ActionExecuted(bytes32 nullifierHash, address proxy);
+    event PrivacyProtocolPool__ActionExecuted(
+        bytes32 nullifierHash,
+        address proxy
+    );
 
     event PrivacyProtocolPool__Withdrawal(
         bytes32 indexed newCommitment,
@@ -38,11 +54,20 @@ interface IPrivacyProtocolPool {
         uint256 timestamp
     );
 
-    event PrivacyProtocolPool__TokenAdded(address indexed token, uint256 indexed timestamp);
+    event PrivacyProtocolPool__TokenAdded(
+        address indexed token,
+        uint256 indexed timestamp
+    );
 
-    event PrivacyProtocolPool__TokenRemoved(address indexed token, uint256 indexed timestamp);
+    event PrivacyProtocolPool__TokenRemoved(
+        address indexed token,
+        uint256 indexed timestamp
+    );
 
-    event PrivacyProtocolPool__VerifierUpdated(address indexed verifier, uint256 indexed timestamp);
+    event PrivacyProtocolPool__VerifierUpdated(
+        address indexed verifier,
+        uint256 indexed timestamp
+    );
 
     /*//////////////////////////////////////////////////////////////
                             USER ACTIONS
@@ -57,7 +82,11 @@ interface IPrivacyProtocolPool {
      *
      * Example: Deposit 100 USDC → Creates 1 UTXO of 100 USDC
      */
-    function deposit(address token, uint256 amount, bytes32 commitment) external;
+    function deposit(
+        address token,
+        uint256 amount,
+        bytes32 commitment
+    ) external;
 
     /**
      * @notice Withdraw by consuming inputs without creating outputs
@@ -103,7 +132,9 @@ interface IPrivacyProtocolPool {
      * @param request The action request struct
      * @return success Whether the action succeeded
      */
-    function executeAction(ActionRequest calldata request) external returns (bool success);
+    function executeAction(
+        ActionRequest calldata request
+    ) external returns (bool success);
 
     // ============ VIEW FUNCTIONS ============
 
@@ -123,6 +154,6 @@ interface IPrivacyProtocolPool {
     // ============ ADMIN FUNCTIONS ============
 
     function addSupportedToken(address token) external;
-    function removeSupportedToken(address token) external;
+    // function removeSupportedToken(address token) external;
     function updateVerifier(address newVerifier) external;
 }

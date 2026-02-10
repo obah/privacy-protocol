@@ -7,7 +7,7 @@ fn main(
     root_hash: pub Field,
     nullifier_hash: pub Field,
     recipient_address: pub Field,
-    data_hash: pub Field, // 248-bit truncated Keccak256 hash of the calldata (binds the action)
+    data_hash: pub Field, // 248-bit truncated Keccak256 hash of action context
     amount_to_withdraw: pub Field,
     new_commitment: pub Field,
     //private inputs
@@ -29,15 +29,16 @@ fn main(
     let computed_nullifier_hash: Field = hash([nullifier], 1);
     assert(computed_nullifier_hash == nullifier_hash, "Invalid nullifier hash");
 
-    // Bind external parameters to the circuit
-    assert(recipient_address == recipient_address);
-    assert(data_hash == data_hash);
+    // Bind external action parameters into the note transition.
+    // For executeAction, data_hash should be Trunc248(keccak256(action_id || calldata)).
+    let action_context_hash: Field = hash([recipient_address, data_hash], 2);
 
     //check the commitment is in the merkle tree
     let computed_merkle_root = merkle_tree::compute_merkle_root(commitment, merkle_proof, is_even);
     assert(computed_merkle_root == root_hash, "Invalid merkle proof");
 
-    //check the new_commitment is valid
-    let computed_new_commitment: Field = hash([new_nullifier, secret, amount_left], 3);
+    //check the new_commitment is valid and bound to action context
+    let computed_new_commitment: Field =
+        hash([new_nullifier, secret, amount_left, action_context_hash], 4);
     assert(computed_new_commitment == new_commitment, "Invalid new commitment");
 }

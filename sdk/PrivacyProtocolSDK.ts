@@ -6,6 +6,7 @@ import {
   generateCommitment,
   computeNullifierHash,
   computeCommitment,
+  computeContextBoundCommitment,
 } from "./utils";
 
 export interface DepositResult {
@@ -143,7 +144,16 @@ export class PrivacyProtocolSDK {
     leaves: string[],
     signer: Signer,
   ): Promise<ExecutionResult> {
-    const fullHash = ethers.keccak256(data);
+    const expectedActionId = ethers.keccak256(ethers.getBytes(secret));
+    if (actionId.toLowerCase() !== expectedActionId.toLowerCase()) {
+      throw new Error(
+        "Invalid actionId: expected keccak256(secret) to allow proxy withdrawal",
+      );
+    }
+
+    const fullHash = ethers.keccak256(
+      ethers.concat([ethers.getBytes(actionId), ethers.getBytes(data)]),
+    );
     const hashBigInt = BigInt(fullHash);
     const truncatedHashBigInt = hashBigInt >> 8n;
     let truncatedHashHex = truncatedHashBigInt.toString(16);
@@ -209,7 +219,7 @@ export class PrivacyProtocolSDK {
     nullifier: string,
     amountInPool: string | number | bigint,
     amountToWithdraw: string | number | bigint,
-    recipient: string,
+    externalAddress: string,
     dataHash: string,
     leaves: string[],
   ) {
@@ -229,10 +239,12 @@ export class PrivacyProtocolSDK {
     const nullifierHash = await computeNullifierHash(nullifier);
 
     const newNullifier = Fr.random();
-    const newCommitment = await computeCommitment(
+    const newCommitment = await computeContextBoundCommitment(
       newNullifier,
       secret,
       amountLeft,
+      externalAddress,
+      dataHash,
     );
 
     if (!this.circuit) {
@@ -245,7 +257,7 @@ export class PrivacyProtocolSDK {
     const input = {
       root_hash: merkleProof.root.toString(),
       nullifier_hash: nullifierHash.toString(),
-      recipient_address: recipient,
+      recipient_address: externalAddress,
       data_hash: dataHash,
       amount_to_withdraw: amountToWithdraw.toString(),
       new_commitment: newCommitment.toString(),

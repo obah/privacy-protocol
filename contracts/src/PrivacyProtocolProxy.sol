@@ -2,14 +2,21 @@
 pragma solidity ^0.8.30;
 
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
+import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 import {Initializable} from "openzeppelin/proxy/utils/Initializable.sol";
 import {IPrivacyProtocolProxy} from "./interfaces/IPrivacyProtocolProxy.sol";
 
 contract PrivacyProtocolProxy is Initializable, IPrivacyProtocolProxy {
+    using SafeERC20 for IERC20;
+
     bytes32 public override s_actionId;
     address public override s_privacyProtocolPool;
 
     function initialize(bytes32 _actionId, address _privacyProtocolPool) external override initializer {
+        if (_privacyProtocolPool == address(0)) {
+            revert PrivacyProtocolProxy__AddressZero();
+        }
+
         s_actionId = _actionId;
         s_privacyProtocolPool = _privacyProtocolPool;
     }
@@ -19,9 +26,13 @@ contract PrivacyProtocolProxy is Initializable, IPrivacyProtocolProxy {
             revert PrivacyProtocolProxy__Unauthorized();
         }
 
+        if (target == address(0)) {
+            revert PrivacyProtocolProxy__AddressZero();
+        }
+
         if (token != address(0) && amount > 0) {
-            IERC20(token).approve(target, 0);
-            IERC20(token).approve(target, amount);
+            IERC20 tokenContract = IERC20(token);
+            tokenContract.forceApprove(target, amount);
         }
 
         (bool success,) = target.call{value: 0}(data);
@@ -32,7 +43,7 @@ contract PrivacyProtocolProxy is Initializable, IPrivacyProtocolProxy {
         emit ActionExecuted(target, success);
 
         if (token != address(0) && amount > 0) {
-            IERC20(token).approve(target, 0);
+            IERC20(token).forceApprove(target, 0);
         }
     }
 
@@ -41,10 +52,14 @@ contract PrivacyProtocolProxy is Initializable, IPrivacyProtocolProxy {
             revert PrivacyProtocolProxy__InvalidSecret();
         }
 
-        uint256 balance = IERC20(token).balanceOf(address(this));
+        if (recipient == address(0) || token == address(0)) {
+            revert PrivacyProtocolProxy__AddressZero();
+        }
+
+        IERC20 tokenContract = IERC20(token);
+        uint256 balance = tokenContract.balanceOf(address(this));
         if (balance > 0) {
-            bool success = IERC20(token).transfer(recipient, balance);
-            if (!success) revert PrivacyProtocolProxy__TransferFailed();
+            tokenContract.safeTransfer(recipient, balance);
             emit FundsWithdrawn(token, recipient, balance);
         }
     }

@@ -7,6 +7,7 @@ import {HonkVerifier} from "../src/Verifier.sol";
 import {IncrementalMerkleTree, Poseidon2} from "../src/IncrementalMerkleTree.sol";
 import {Test, console, Vm} from "forge-std/Test.sol";
 import {ERC20Mock} from "openzeppelin/mocks/token/ERC20Mock.sol";
+import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {IPrivacyProtocolPool} from "../src/interfaces/IPrivacyProtocolPool.sol";
 import {DemoDao} from "../src/demo/DemoDao.sol";
 import {DemoDefi} from "../src/demo/DemoDefi.sol";
@@ -20,7 +21,7 @@ contract PrivacyProtocolPoolTest is Test {
     PrivacyProtocolPool public privacyProtocolPool;
     DemoDao public demoDao;
     DemoDefi public demoDefi;
-    ERC20Mock public rewardToken;
+    IERC20 public rewardToken;
     HonkVerifier public verifier;
     Poseidon2 public hasher;
     address owner = makeAddr("owner");
@@ -51,7 +52,7 @@ contract PrivacyProtocolPoolTest is Test {
         demoDao = new DemoDao(address(token), 1 ether, 1 ether, 1 days, 400);
 
         demoDefi = new DemoDefi();
-        rewardToken = new ERC20Mock();
+        rewardToken = IERC20(address(demoDefi.USDTpp()));
     }
 
     function _getCommitment(uint256 amount)
@@ -97,6 +98,10 @@ contract PrivacyProtocolPoolTest is Test {
         bytes memory result = vm.ffi(inputs);
 
         (proof, publicInputs, newNullifier) = abi.decode(result, (bytes, bytes32[], bytes32));
+    }
+
+    function _computeActionDataHash(bytes32 actionId, bytes memory actionData) internal pure returns (bytes32) {
+        return bytes32(uint256(keccak256(abi.encodePacked(actionId, actionData))) >> 8);
     }
 
     function testMakeDeposit() public {
@@ -210,7 +215,8 @@ contract PrivacyProtocolPoolTest is Test {
 
         vars.target = address(demoDao);
         vars.actionData = abi.encodeWithSelector(DemoDao.createProposal.selector, address(0x123), "", 0);
-        vars.dataHash = bytes32(uint256(keccak256(vars.actionData)) >> 8);
+        bytes32 actionId = keccak256(abi.encodePacked(vars.secret));
+        vars.dataHash = _computeActionDataHash(actionId, vars.actionData);
 
         bytes32[] memory leaves = new bytes32[](1);
         leaves[0] = vars.commitment;
@@ -223,7 +229,7 @@ contract PrivacyProtocolPoolTest is Test {
             amount: vars.amount,
             target: vars.target,
             data: vars.actionData,
-            actionId: keccak256(abi.encodePacked(vars.secret)),
+            actionId: actionId,
             nullifierHash: vars.publicInputs[1],
             proof: vars.proof,
             rootHash: vars.publicInputs[0],
@@ -248,20 +254,24 @@ contract PrivacyProtocolPoolTest is Test {
         vars.amount = 1 ether;
         (vars.commitment, vars.nullifier, vars.secret,) = _getCommitment(vars.amount);
 
+        IERC20 actionToken = IERC20(address(demoDefi.ppUSD()));
+        demoDefi.faucet();
+
         vm.startPrank(owner);
-        privacyProtocolPool.addSupportedToken(address(token));
+        privacyProtocolPool.addSupportedToken(address(actionToken));
         vm.stopPrank();
 
-        token.mint(address(this), vars.amount);
-        token.approve(address(privacyProtocolPool), vars.amount);
+        actionToken.approve(address(privacyProtocolPool), vars.amount);
 
-        privacyProtocolPool.deposit(address(token), vars.amount, vars.commitment);
+        privacyProtocolPool.deposit(address(actionToken), vars.amount, vars.commitment);
 
         vars.target = address(demoDefi);
         // Swap token -> rewardToken
-        vars.actionData =
-            abi.encodeWithSelector(DemoDefi.swap.selector, address(token), vars.amount, address(rewardToken));
-        vars.dataHash = bytes32(uint256(keccak256(vars.actionData)) >> 8);
+        vars.actionData = abi.encodeWithSelector(
+            bytes4(keccak256("swap(address,uint256,address)")), address(actionToken), vars.amount, address(rewardToken)
+        );
+        bytes32 actionId = keccak256(abi.encodePacked(vars.secret));
+        vars.dataHash = _computeActionDataHash(actionId, vars.actionData);
 
         bytes32[] memory leaves = new bytes32[](1);
         leaves[0] = vars.commitment;
@@ -270,11 +280,11 @@ contract PrivacyProtocolPoolTest is Test {
             _getProof(vars.nullifier, vars.secret, vars.amount, vars.amount, vars.target, vars.dataHash, leaves);
 
         IPrivacyProtocolPool.ActionRequest memory request = IPrivacyProtocolPool.ActionRequest({
-            token: address(token),
+            token: address(actionToken),
             amount: vars.amount,
             target: vars.target,
             data: vars.actionData,
-            actionId: keccak256(abi.encodePacked(vars.secret)),
+            actionId: actionId,
             nullifierHash: vars.publicInputs[1],
             proof: vars.proof,
             rootHash: vars.publicInputs[0],
@@ -324,19 +334,23 @@ contract PrivacyProtocolPoolTest is Test {
         vars.amount = 1 ether;
         (vars.commitment, vars.nullifier, vars.secret,) = _getCommitment(vars.amount);
 
+        IERC20 actionToken = IERC20(address(demoDefi.ppUSD()));
+        demoDefi.faucet();
+
         vm.startPrank(owner);
-        privacyProtocolPool.addSupportedToken(address(token));
+        privacyProtocolPool.addSupportedToken(address(actionToken));
         vm.stopPrank();
 
-        token.mint(address(this), vars.amount);
-        token.approve(address(privacyProtocolPool), vars.amount);
+        actionToken.approve(address(privacyProtocolPool), vars.amount);
 
-        privacyProtocolPool.deposit(address(token), vars.amount, vars.commitment);
+        privacyProtocolPool.deposit(address(actionToken), vars.amount, vars.commitment);
 
         vars.target = address(demoDefi);
-        vars.actionData =
-            abi.encodeWithSelector(DemoDefi.swap.selector, address(token), vars.amount, address(rewardToken));
-        vars.dataHash = bytes32(uint256(keccak256(vars.actionData)) >> 8);
+        vars.actionData = abi.encodeWithSelector(
+            bytes4(keccak256("swap(address,uint256,address)")), address(actionToken), vars.amount, address(rewardToken)
+        );
+        bytes32 actionId = keccak256(abi.encodePacked(vars.secret));
+        vars.dataHash = _computeActionDataHash(actionId, vars.actionData);
 
         bytes32[] memory leaves = new bytes32[](1);
         leaves[0] = vars.commitment;
@@ -345,11 +359,11 @@ contract PrivacyProtocolPoolTest is Test {
             _getProof(vars.nullifier, vars.secret, vars.amount, vars.amount, vars.target, vars.dataHash, leaves);
 
         IPrivacyProtocolPool.ActionRequest memory request = IPrivacyProtocolPool.ActionRequest({
-            token: address(token),
+            token: address(actionToken),
             amount: vars.amount,
             target: vars.target,
             data: vars.actionData,
-            actionId: keccak256(abi.encodePacked(vars.secret)),
+            actionId: actionId,
             nullifierHash: vars.publicInputs[1],
             proof: vars.proof,
             rootHash: vars.publicInputs[0],

@@ -28,8 +28,8 @@ export const usePrivateExecute = () => {
       // 1. Fetch latest leaves
       const leaves = await sdk.getLeaves();
 
-      // 2. Generate Action ID (random bytes32)
-      const actionId = ethers.hexlify(ethers.randomBytes(32));
+      // 2. Derive Action ID (must be keccak256(secret) for proxy withdrawal)
+      const actionId = ethers.keccak256(note.secret);
 
       // 3. Execute
       const result = await sdk.executeAction(

@@ -22,7 +22,7 @@ const circuit = JSON.parse(fs.readFileSync(circuitPath, "utf8"));
   const amountInPool = inputs[2];
   const amountToWithdraw = inputs[3];
   const recipient = inputs[4];
-  const dataHash = inputs[5]; // 248-bit truncated Keccak256 hash
+  const dataHash = inputs[5]; // 248-bit truncated keccak256(actionId || calldata) for executeAction
   const leaves = inputs.slice(6);
 
   const amountLeft = BigInt(amountInPool) - BigInt(amountToWithdraw);
@@ -38,10 +38,15 @@ const circuit = JSON.parse(fs.readFileSync(circuitPath, "utf8"));
 
   // Generate new nullifier and new commitment
   const newNullifier = Fr.random();
+  const actionContextHash = await bb.poseidon2Hash([
+    new Fr(BigInt(recipient)),
+    new Fr(BigInt(dataHash)),
+  ]);
   const newCommitment = await bb.poseidon2Hash([
     newNullifier,
     Fr.fromString(secret),
     new Fr(amountLeft),
+    actionContextHash,
   ]);
   const tree = await merkleTree(leaves);
   const merkleProof = tree.proof(tree.getIndex(commitment.toString()));
