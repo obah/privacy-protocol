@@ -18,3 +18,5 @@ contracts/docs/
 
 /node_modules
 nextra-docs/node_modules
+
+/.vscode
