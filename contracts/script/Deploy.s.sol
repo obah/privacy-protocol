@@ -7,15 +7,13 @@ import {HonkVerifier} from "../src/Verifier.sol";
 import {Poseidon2} from "poseidon/Poseidon2.sol";
 import {ERC20Mock} from "openzeppelin/mocks/token/ERC20Mock.sol";
 import {DemoDefi} from "../src/demo/DemoDefi.sol";
+import {DemoDao} from "../src/demo/DemoDao.sol";
 
 contract Deploy is Script {
     function run() external {
         vm.startBroadcast();
 
-        address deployerAddress = vm.envOr(
-            "DEPLOYER",
-            address(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266)
-        );
+        address deployerAddress = vm.envOr("DEPLOYER", address(0));
         console.log("Deploying from:", deployerAddress);
 
         Poseidon2 hasher = new Poseidon2();
@@ -24,13 +22,19 @@ contract Deploy is Script {
         HonkVerifier verifier = new HonkVerifier();
         console.log("HonkVerifier deployed at:", address(verifier));
 
-        // ERC20Mock token = new ERC20Mock();
-        // console.log("ERC20Mock deployed at:", address(token));
-
         DemoDefi demoDefi = new DemoDefi();
         console.log("DemoDefi deployed at:", address(demoDefi));
         console.log("ppUSD deployed at:", address(demoDefi.ppUSD()));
         console.log("USDTpp deployed at:", address(demoDefi.USDTpp()));
+
+        DemoDao demoDao = new DemoDao(
+            address(demoDefi.ppUSD()),
+            10 ether,
+            1 ether,
+            10 days,
+            400
+        );
+        console.log("DemoDao deployed at:", address(demoDao));
 
         PrivacyProtocolPool privacyProtocolPool = new PrivacyProtocolPool(
             hasher,
@@ -43,14 +47,8 @@ contract Deploy is Script {
             address(privacyProtocolPool)
         );
 
-        // privacyProtocolPool.addSupportedToken(address(token));
-        // console.log("Added ERC20Mock as supported token");
-
         privacyProtocolPool.addSupportedToken(address(demoDefi.ppUSD()));
         console.log("Added ppUSD as supported token");
-
-        // token.mint(deployerAddress, 1000 ether);
-        // console.log("Minted 1000 ether of ERC20Mock to deployer");
 
         demoDefi.faucet();
         console.log("Faucet minted 1000 ppUSD to deployer");
@@ -59,13 +57,15 @@ contract Deploy is Script {
     }
 }
 
-//   Deploying from: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
-//   Poseidon2 deployed at: 0x5FbDB2315678afecb367f032d93F642f64180aa3
-//   HonkVerifier deployed at: 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
-//   DemoDefi deployed at: 0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0
-//   ppUSD deployed at: 0x75537828f2ce51be7289709686A69CbFDbB714F1
-//   USDTpp deployed at: 0xE451980132E65465d0a498c53f0b5227326Dd73F
-//   PrivacyProtocolPool deployed at: 0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
+// == Logs ==
+//   Deploying from: 0x0000000000000000000000000000000000000000
+//   Poseidon2 deployed at: 0xe06d39562bB02Aa92a3c55495Ef3dFb27f679f83
+//   HonkVerifier deployed at: 0x4eE4661b8Ad32Ca08fED028Fe1490303f6D61BDA
+//   DemoDefi deployed at: 0xA8DCc58D83Cae0FfF1076832Ef7E5a5D9B96D9d7
+//   ppUSD deployed at: 0xba2A1482708e56b21f8EC7842650381855645c9A
+//   USDTpp deployed at: 0x9eB5C2080E98c44b15cfd5a822414380458A7634
+//   DemoDao deployed at: 0xEf7317a48f0e16B405706BD373627A846885dEB8
+//   PrivacyProtocolPool deployed at: 0xA0806cf43f5E9A2C42c8291676EE814b39A6413e
 //   Added ppUSD as supported token
 //   Faucet minted 1000 ppUSD to deployer
 

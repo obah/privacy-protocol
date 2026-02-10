@@ -11,11 +11,17 @@ import {Ownable} from "openzeppelin/access/Ownable.sol";
 import {Clones} from "openzeppelin/proxy/Clones.sol";
 import {PrivacyProtocolProxy} from "./PrivacyProtocolProxy.sol";
 
-contract PrivacyProtocolPool is IPrivacyProtocolPool, IncrementalMerkleTree, ReentrancyGuard, Ownable {
+contract PrivacyProtocolPool is
+    IPrivacyProtocolPool,
+    IncrementalMerkleTree,
+    ReentrancyGuard,
+    Ownable
+{
     using SafeERC20 for IERC20;
     using Clones for address;
 
-    bytes32 private constant IMPLEMENTATION_LOCK_ACTION_ID = bytes32(uint256(1));
+    bytes32 private constant IMPLEMENTATION_LOCK_ACTION_ID =
+        bytes32(uint256(1));
     bytes4 private constant INCREASE_ALLOWANCE_SELECTOR = 0x39509351;
     bytes4 private constant DECREASE_ALLOWANCE_SELECTOR = 0xa457c2d7;
     bytes4 private constant PERMIT_SELECTOR = 0xd505accf;
@@ -28,11 +34,19 @@ contract PrivacyProtocolPool is IPrivacyProtocolPool, IncrementalMerkleTree, Ree
     mapping(bytes32 nullifierHashes => bool isUsed) public s_nullifierHashes;
     mapping(address tokenAddress => bool isSupported) public s_supportedTokens;
 
-    constructor(Poseidon2 _hasher, uint32 _merkleTreeDepth, IVerifier _verifier, address initialOwner)
+    constructor(
+        Poseidon2 _hasher,
+        uint32 _merkleTreeDepth,
+        IVerifier _verifier,
+        address initialOwner
+    )
         IncrementalMerkleTree(_merkleTreeDepth, _hasher)
-        Ownable(initialOwner)
+        Ownable(initialOwner == address(0) ? msg.sender : initialOwner)
     {
-        if (address(_verifier) == address(0) || address(_verifier).code.length == 0) {
+        if (
+            address(_verifier) == address(0) ||
+            address(_verifier).code.length == 0
+        ) {
             revert PrivacyProtocolPool__InvalidVerifier(address(_verifier));
         }
 
@@ -43,7 +57,11 @@ contract PrivacyProtocolPool is IPrivacyProtocolPool, IncrementalMerkleTree, Ree
         i_privacyProtocolProxyImplementation = implementation;
     }
 
-    function deposit(address token, uint256 amount, bytes32 commitment) external nonReentrant {
+    function deposit(
+        address token,
+        uint256 amount,
+        bytes32 commitment
+    ) external nonReentrant {
         if (s_commitments[commitment]) {
             revert PrivacyProtocolPool__CommitmentAlreadyUsed(commitment);
         }
@@ -59,10 +77,15 @@ contract PrivacyProtocolPool is IPrivacyProtocolPool, IncrementalMerkleTree, Ree
         IERC20 tokenContract = IERC20(token);
         uint256 balanceBefore = tokenContract.balanceOf(address(this));
         tokenContract.safeTransferFrom(msg.sender, address(this), amount);
-        uint256 receivedAmount = tokenContract.balanceOf(address(this)) - balanceBefore;
+        uint256 receivedAmount = tokenContract.balanceOf(address(this)) -
+            balanceBefore;
 
         if (receivedAmount != amount) {
-            revert PrivacyProtocolPool__UnsupportedTokenBehavior(token, amount, receivedAmount);
+            revert PrivacyProtocolPool__UnsupportedTokenBehavior(
+                token,
+                amount,
+                receivedAmount
+            );
         }
 
         s_tokenBalances[token] += receivedAmount;
@@ -70,7 +93,13 @@ contract PrivacyProtocolPool is IPrivacyProtocolPool, IncrementalMerkleTree, Ree
         uint32 _insertedLeafIndex = _insert(commitment);
         s_commitments[commitment] = true;
 
-        emit PrivacyProtocolPool__Deposit(token, commitment, receivedAmount, _insertedLeafIndex, block.timestamp);
+        emit PrivacyProtocolPool__Deposit(
+            token,
+            commitment,
+            receivedAmount,
+            _insertedLeafIndex,
+            block.timestamp
+        );
     }
 
     function withdraw(
@@ -105,7 +134,11 @@ contract PrivacyProtocolPool is IPrivacyProtocolPool, IncrementalMerkleTree, Ree
 
         uint256 availableBalance = s_tokenBalances[token];
         if (availableBalance < amount) {
-            revert PrivacyProtocolPool__InsufficientBalance(token, amount, availableBalance);
+            revert PrivacyProtocolPool__InsufficientBalance(
+                token,
+                amount,
+                availableBalance
+            );
         }
 
         bytes32[] memory publicInputs = new bytes32[](6);
@@ -130,11 +163,18 @@ contract PrivacyProtocolPool is IPrivacyProtocolPool, IncrementalMerkleTree, Ree
         IERC20(token).safeTransfer(recipient, amount);
 
         emit PrivacyProtocolPool__Withdrawal(
-            newCommitment, recipient, token, amount, _insertedLeafIndex, block.timestamp
+            newCommitment,
+            recipient,
+            token,
+            amount,
+            _insertedLeafIndex,
+            block.timestamp
         );
     }
 
-    function executeAction(ActionRequest calldata request) external nonReentrant returns (bool success) {
+    function executeAction(
+        ActionRequest calldata request
+    ) external nonReentrant returns (bool success) {
         bytes calldata actionData = request.data;
 
         if (request.target == address(this) || request.target == address(0)) {
@@ -150,7 +190,9 @@ contract PrivacyProtocolPool is IPrivacyProtocolPool, IncrementalMerkleTree, Ree
         }
 
         if (s_commitments[request.newCommitment]) {
-            revert PrivacyProtocolPool__CommitmentAlreadyUsed(request.newCommitment);
+            revert PrivacyProtocolPool__CommitmentAlreadyUsed(
+                request.newCommitment
+            );
         }
 
         if (s_nullifierHashes[request.nullifierHash]) {
@@ -159,7 +201,11 @@ contract PrivacyProtocolPool is IPrivacyProtocolPool, IncrementalMerkleTree, Ree
 
         uint256 availableBalance = s_tokenBalances[request.token];
         if (availableBalance < request.amount) {
-            revert PrivacyProtocolPool__InsufficientBalance(request.token, request.amount, availableBalance);
+            revert PrivacyProtocolPool__InsufficientBalance(
+                request.token,
+                request.amount,
+                availableBalance
+            );
         }
 
         // Prevent direct token allowance/transfer operations from being proxied.
@@ -169,9 +215,12 @@ contract PrivacyProtocolPool is IPrivacyProtocolPool, IncrementalMerkleTree, Ree
                 selector := calldataload(actionData.offset)
             }
             if (
-                selector == IERC20.approve.selector || selector == IERC20.transfer.selector
-                    || selector == IERC20.transferFrom.selector || selector == INCREASE_ALLOWANCE_SELECTOR
-                    || selector == DECREASE_ALLOWANCE_SELECTOR || selector == PERMIT_SELECTOR
+                selector == IERC20.approve.selector ||
+                selector == IERC20.transfer.selector ||
+                selector == IERC20.transferFrom.selector ||
+                selector == INCREASE_ALLOWANCE_SELECTOR ||
+                selector == DECREASE_ALLOWANCE_SELECTOR ||
+                selector == PERMIT_SELECTOR
             ) {
                 revert PrivacyProtocolPool__ExecutionFailed();
             }
@@ -185,7 +234,11 @@ contract PrivacyProtocolPool is IPrivacyProtocolPool, IncrementalMerkleTree, Ree
         publicInputs[0] = request.rootHash;
         publicInputs[1] = request.nullifierHash;
         publicInputs[2] = bytes32(uint256(uint160(request.target)));
-        publicInputs[3] = bytes32(uint256(keccak256(abi.encodePacked(request.actionId, actionData))) >> 8);
+        publicInputs[3] = bytes32(
+            uint256(
+                keccak256(abi.encodePacked(request.actionId, actionData))
+            ) >> 8
+        );
         publicInputs[4] = bytes32(request.amount);
         publicInputs[5] = request.newCommitment;
 
@@ -203,7 +256,12 @@ contract PrivacyProtocolPool is IPrivacyProtocolPool, IncrementalMerkleTree, Ree
             IERC20(request.token).safeTransfer(proxy, request.amount);
         }
 
-        PrivacyProtocolProxy(proxy).execute(request.token, request.amount, request.target, actionData);
+        PrivacyProtocolProxy(proxy).execute(
+            request.token,
+            request.amount,
+            request.target,
+            actionData
+        );
 
         _insert(request.newCommitment);
         s_commitments[request.newCommitment] = true;

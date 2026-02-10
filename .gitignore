@@ -5,6 +5,7 @@ contracts/out/
 # Ignores development broadcast logs
 !/broadcast
 contracts/broadcast/*/31337/
+contracts/broadcast/*/421614/
 contracts/broadcast/**/dry-run/
 
 # Docs
