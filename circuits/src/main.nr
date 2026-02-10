@@ -19,25 +19,21 @@ fn main(
     merkle_proof: [Field; 20],
     is_even: [bool; 20],
 ) {
-    // check that the amounts are valid
+    amount_in_pool.assert_max_bit_size::<120>();
+    amount_to_withdraw.assert_max_bit_size::<120>();
+    amount_left.assert_max_bit_size::<120>();
     assert(amount_in_pool == amount_to_withdraw + amount_left, "Invalid amounts");
 
-    // compute the commitment using Poseidon(nullifier, secret)
     let commitment: Field = hash([nullifier, secret, amount_in_pool], 3);
 
-    // check nullifier matches nullifier hash
     let computed_nullifier_hash: Field = hash([nullifier], 1);
     assert(computed_nullifier_hash == nullifier_hash, "Invalid nullifier hash");
 
-    // Bind external action parameters into the note transition.
-    // For executeAction, data_hash should be Trunc248(keccak256(action_id || calldata)).
     let action_context_hash: Field = hash([recipient_address, data_hash], 2);
 
-    //check the commitment is in the merkle tree
     let computed_merkle_root = merkle_tree::compute_merkle_root(commitment, merkle_proof, is_even);
     assert(computed_merkle_root == root_hash, "Invalid merkle proof");
 
-    //check the new_commitment is valid and bound to action context
     let computed_new_commitment: Field =
         hash([new_nullifier, secret, amount_left, action_context_hash], 4);
     assert(computed_new_commitment == new_commitment, "Invalid new commitment");
