@@ -5,8 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { ThumbsUp, ThumbsDown, MinusCircle, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useTheme } from "next-themes";
-import DemoWrapper from "@/components/demo/DemoWrapper";
+import Faucet from "./Faucet";
 
 type ProposalStatus = "Active" | "Passed" | "Failed" | "Executed";
 
@@ -37,20 +36,10 @@ const mockProposals: Proposal[] = [
   },
 ];
 
-export default function DaoDemoPage() {
-  const { theme, setTheme } = useTheme();
-
-  const triggerIncognito = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
-  };
-
+export default function DaoDemoContent() {
   return (
-    <DemoWrapper
-      title="Governance"
-      description="Demo voting in a DAO."
-      action="vote"
-    >
-      <div className="grid gap-6">
+    <div className="grid gap-6">
+      <div className="space-y-6">
         {mockProposals.map((proposal) => (
           <motion.div
             key={proposal.id}
@@ -134,6 +123,9 @@ export default function DaoDemoPage() {
           </motion.div>
         ))}
       </div>
-    </DemoWrapper>
+      <div className="mt-8">
+        <Faucet />
+      </div>
+    </div>
   );
 }

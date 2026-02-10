@@ -1,17 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, ChevronDown } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button, buttonVariants } from "./ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { usePathname } from "next/navigation";
 import { ConnectKitButton } from "connectkit";
-import { useState } from "react";
 import { useTheme } from "next-themes";
 
 export const Navbar = () => {
@@ -46,20 +39,12 @@ export const Navbar = () => {
           >
             Docs
           </Link>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger className="hover:text-primary flex items-center gap-1 rounded-sm px-4 py-2 text-sm font-medium backdrop-blur-xs transition-colors outline-none">
-              Demo <ChevronDown size={14} />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <Link href="/demo/dao">DAO Demo</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/demo/defi">DeFi Demo</Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Link
+            href="/demo"
+            className="hover:text-primary rounded-sm px-4 py-2 text-sm font-medium backdrop-blur-xs transition-colors"
+          >
+            Demo
+          </Link>
         </div>
 
         {isDemo ? (
