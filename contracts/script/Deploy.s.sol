@@ -10,6 +10,12 @@ import {DemoDefi} from "../src/demo/DemoDefi.sol";
 import {DemoDao} from "../src/demo/DemoDao.sol";
 
 contract Deploy is Script {
+    uint constant MIN_TOKENS_TO_PROPOSE = 10 ether;
+    uint constant MIN_TOKENS_TO_VOTE = 10 ether;
+    uint constant VOTING_PERIOD = 100 days;
+    uint constant QUORUM_PERCENTAGE = 400;
+    uint32 constant MERKLE_TREE_DEPTH = 20;
+
     function run() external {
         vm.startBroadcast();
 
@@ -29,16 +35,16 @@ contract Deploy is Script {
 
         DemoDao demoDao = new DemoDao(
             address(demoDefi.ppUSD()),
-            10 ether,
-            1 ether,
-            10 days,
-            400
+            MIN_TOKENS_TO_PROPOSE,
+            MIN_TOKENS_TO_VOTE,
+            VOTING_PERIOD,
+            QUORUM_PERCENTAGE
         );
         console.log("DemoDao deployed at:", address(demoDao));
 
         PrivacyProtocolPool privacyProtocolPool = new PrivacyProtocolPool(
             hasher,
-            20,
+            MERKLE_TREE_DEPTH,
             verifier,
             deployerAddress
         );
@@ -56,21 +62,3 @@ contract Deploy is Script {
         vm.stopBroadcast();
     }
 }
-
-// == Logs ==
-//   Deploying from: 0x0000000000000000000000000000000000000000
-//   Poseidon2 deployed at: 0xe06d39562bB02Aa92a3c55495Ef3dFb27f679f83
-//   HonkVerifier deployed at: 0x4eE4661b8Ad32Ca08fED028Fe1490303f6D61BDA
-//   DemoDefi deployed at: 0xA8DCc58D83Cae0FfF1076832Ef7E5a5D9B96D9d7
-//   ppUSD deployed at: 0xba2A1482708e56b21f8EC7842650381855645c9A
-//   USDTpp deployed at: 0x9eB5C2080E98c44b15cfd5a822414380458A7634
-//   DemoDao deployed at: 0xEf7317a48f0e16B405706BD373627A846885dEB8
-//   PrivacyProtocolPool deployed at: 0xA0806cf43f5E9A2C42c8291676EE814b39A6413e
-//   Added ppUSD as supported token
-//   Faucet minted 1000 ppUSD to deployer
-
-//anvil
-//forge script deploy
-//export PRIVACY_PROTOCOL_POOL_ADDRESS=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
-//export TOKEN_ADDRESS=0x75537828f2ce51be7289709686A69CbFDbB714F1
-//npx tsx sdk/scripts/test-sdk.ts

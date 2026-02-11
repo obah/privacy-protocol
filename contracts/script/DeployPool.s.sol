@@ -7,6 +7,8 @@ import {Poseidon2} from "poseidon/Poseidon2.sol";
 import {HonkVerifier} from "../src/Verifier.sol";
 
 contract DeployPool is Script {
+    uint32 constant MERKLE_TREE_DEPTH = 20;
+
     function run() external {
         vm.startBroadcast();
 
@@ -35,7 +37,7 @@ contract DeployPool is Script {
 
         PrivacyProtocolPool privacyProtocolPool = new PrivacyProtocolPool(
             hasher,
-            20,
+            MERKLE_TREE_DEPTH,
             verifier,
             deployerAddress
         );

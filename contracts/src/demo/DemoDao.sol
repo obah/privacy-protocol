@@ -17,7 +17,6 @@ contract DemoDao is ReentrancyGuard {
     error DemoDao__ProposalStillActive();
     error DemoDao__ProposalAlreadyExecuted();
     error DemoDao__ProposalNotPassed();
-    error DemoDao__AlreadyVoted();
     error DemoDao__VotingPeriodEnded();
     error DemoDao__ExecutionFailed();
     error DemoDao__InvalidVotingPeriod();
@@ -52,10 +51,19 @@ contract DemoDao is ReentrancyGuard {
 
     // ============ Events ============
     event ProposalCreated(
-        uint256 indexed proposalId, address indexed proposer, address target, uint256 startTime, uint256 endTime
+        uint256 indexed proposalId,
+        address indexed proposer,
+        address target,
+        uint256 startTime,
+        uint256 endTime
     );
 
-    event VoteCast(uint256 indexed proposalId, address indexed voter, uint8 support, uint256 weight);
+    event VoteCast(
+        uint256 indexed proposalId,
+        address indexed voter,
+        uint8 support,
+        uint256 weight
+    );
 
     event ProposalExecuted(uint256 indexed proposalId, bool success);
     event ProposalClosed(uint256 indexed proposalId, ProposalStatus status);
@@ -115,7 +123,11 @@ contract DemoDao is ReentrancyGuard {
 
     // ============ External Functions ============
 
-    function createProposal(address target, bytes calldata data, uint256 value) external returns (uint256 proposalId) {
+    function createProposal(
+        address target,
+        bytes calldata data,
+        uint256 value
+    ) external returns (uint256 proposalId) {
         if (governanceToken.balanceOf(msg.sender) < minTokensToPropose) {
             revert DemoDao__InsufficientTokenBalance();
         }
@@ -135,10 +147,19 @@ contract DemoDao is ReentrancyGuard {
 
         s_proposalData[proposalId] = data;
 
-        emit ProposalCreated(proposalId, msg.sender, target, block.timestamp, block.timestamp + votingPeriod);
+        emit ProposalCreated(
+            proposalId,
+            msg.sender,
+            target,
+            block.timestamp,
+            block.timestamp + votingPeriod
+        );
     }
 
-    function vote(uint256 proposalId, uint8 support) external onlyMember proposalExists(proposalId) {
+    function vote(
+        uint256 proposalId,
+        uint8 support
+    ) external onlyMember proposalExists(proposalId) {
         ProposalCore storage proposal = s_proposals[proposalId];
 
         if (proposal.status != ProposalStatus.Active) {
@@ -149,12 +170,7 @@ contract DemoDao is ReentrancyGuard {
             revert DemoDao__VotingPeriodEnded();
         }
 
-        if (s_hasVoted[proposalId][msg.sender]) {
-            revert DemoDao__AlreadyVoted();
-        }
-
-        uint256 voterWeight = governanceToken.balanceOf(msg.sender);
-        s_hasVoted[proposalId][msg.sender] = true;
+        uint256 voterWeight = 1;
 
         ProposalVotes storage votes = s_proposalVotes[proposalId];
         if (support == 0) {
@@ -168,7 +184,9 @@ contract DemoDao is ReentrancyGuard {
         emit VoteCast(proposalId, msg.sender, support, voterWeight);
     }
 
-    function execute(uint256 proposalId) external nonReentrant proposalExists(proposalId) {
+    function execute(
+        uint256 proposalId
+    ) external nonReentrant proposalExists(proposalId) {
         ProposalCore storage proposal = s_proposals[proposalId];
 
         if (proposal.executed) {
@@ -191,7 +209,7 @@ contract DemoDao is ReentrancyGuard {
         proposal.status = ProposalStatus.Executed;
 
         bytes memory data = s_proposalData[proposalId];
-        (bool success,) = proposal.target.call{value: proposal.value}(data);
+        (bool success, ) = proposal.target.call{value: proposal.value}(data);
 
         if (!success) {
             revert DemoDao__ExecutionFailed();
@@ -200,7 +218,9 @@ contract DemoDao is ReentrancyGuard {
         emit ProposalExecuted(proposalId, success);
     }
 
-    function closeProposal(uint256 proposalId) external proposalExists(proposalId) {
+    function closeProposal(
+        uint256 proposalId
+    ) external proposalExists(proposalId) {
         ProposalCore storage proposal = s_proposals[proposalId];
 
         if (proposal.status != ProposalStatus.Active) {
@@ -222,15 +242,20 @@ contract DemoDao is ReentrancyGuard {
         return s_proposalCount;
     }
 
-    function hasVoted(uint256 proposalId, address voter) external view returns (bool) {
+    function hasVoted(
+        uint256 proposalId,
+        address voter
+    ) external view returns (bool) {
         return s_hasVoted[proposalId][voter];
     }
 
     function hasReachedQuorum(uint256 proposalId) public view returns (bool) {
         ProposalVotes storage votes = s_proposalVotes[proposalId];
-        uint256 totalVotes = votes.forVotes + votes.againstVotes + votes.abstainVotes;
-        uint256 totalSupply = governanceToken.totalSupply();
-        return (totalVotes * 10000) >= (totalSupply * quorumPercentage);
+        uint256 totalVotes = votes.forVotes +
+            votes.againstVotes +
+            votes.abstainVotes;
+
+        return totalVotes >= (quorumPercentage * 10);
     }
 
     function isMember(address account) external view returns (bool) {
