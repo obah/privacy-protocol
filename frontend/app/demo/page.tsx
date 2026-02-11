@@ -1,23 +1,309 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useTheme } from "next-themes";
-import { useState } from "react";
 import DaoDemoContent from "@/components/demo/DaoDemoContent";
 import DefiDemoContent from "@/components/demo/DefiDemoContent";
+import type {
+  NormalTransactionEvent,
+  NormalTransactionReporter,
+} from "@/components/demo/transaction-log-types";
+import { DEMO_DAO_ABI, DEMO_DEFI_ABI, ERC20_ABI } from "@/lib/demo-config";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Vote } from "lucide-react";
+import {
+  ExternalLink,
+  LayoutDashboard,
+  Lock,
+  TerminalSquare,
+  Vote,
+} from "lucide-react";
+import Link from "next/link";
+import { useTheme } from "next-themes";
+import { useCallback, useMemo, useState } from "react";
+import { decodeFunctionData, type Hex } from "viem";
+import { useTransaction, useWaitForTransactionReceipt } from "wagmi";
 
 type DemoTab = "dao" | "defi";
 
+interface NormalTransactionLog extends NormalTransactionEvent {
+  id: string;
+  createdAt: number;
+}
+
+const ARBITRUM_SEPOLIA_EXPLORER = "https://sepolia.arbiscan.io";
+const NORMAL_DECODE_ABI = [...DEMO_DAO_ABI, ...DEMO_DEFI_ABI, ...ERC20_ABI];
+
+function truncate(value: string, start: number = 12, end: number = 8): string {
+  if (value.length <= start + end + 3) return value;
+  return `${value.slice(0, start)}...${value.slice(-end)}`;
+}
+
+function stringifyArgument(argument: unknown): string {
+  if (typeof argument === "bigint") return argument.toString();
+  if (typeof argument === "string") {
+    if (argument.startsWith("0x") && argument.length > 24) {
+      return truncate(argument, 14, 8);
+    }
+    return argument;
+  }
+  if (typeof argument === "boolean") return argument ? "true" : "false";
+  if (Array.isArray(argument)) {
+    return `[${argument.map(stringifyArgument).join(", ")}]`;
+  }
+  if (argument && typeof argument === "object") {
+    return JSON.stringify(argument, (_, value) =>
+      typeof value === "bigint" ? value.toString() : value,
+    );
+  }
+  return String(argument);
+}
+
+function decodeTransactionInput(input?: Hex): {
+  method: string;
+  parameters: string;
+} {
+  if (!input || input === "0x") {
+    return { method: "transfer", parameters: "none" };
+  }
+
+  const methodId = input.slice(0, 10);
+
+  try {
+    const decoded = decodeFunctionData({
+      abi: NORMAL_DECODE_ABI,
+      data: input,
+    });
+    const args = Array.isArray(decoded.args) ? (decoded.args as unknown[]) : [];
+
+    return {
+      method: `${decoded.functionName} (${methodId})`,
+      parameters:
+        args.length > 0 ? args.map(stringifyArgument).join(", ") : "none",
+    };
+  } catch {
+    return {
+      method: `unknown (${methodId})`,
+      parameters: truncate(input, 38, 12),
+    };
+  }
+}
+
+function buildNoiseLines(seed: string): string[] {
+  const cleaned = seed.replace(/^0x/, "") || "0".repeat(120);
+  const repeated = cleaned
+    .repeat(Math.ceil(140 / cleaned.length))
+    .slice(0, 140);
+  return [`0x${repeated.slice(0, 64)}`, `0x${repeated.slice(22, 86)}`];
+}
+
+function NoiseBlock({
+  seed,
+  tone = "emerald",
+}: {
+  seed: string;
+  tone?: "emerald" | "sky";
+}) {
+  const lines = useMemo(() => buildNoiseLines(seed), [seed]);
+
+  return (
+    <div
+      className={cn(
+        "space-y-1 text-[10px] leading-4 tracking-wide blur-[1.8px] select-none",
+        tone === "emerald"
+          ? "text-emerald-700/35 dark:text-emerald-300/30"
+          : "text-sky-700/35 dark:text-sky-200/30",
+      )}
+    >
+      <div className="grid grid-cols-[96px_1fr] gap-2">
+        <p
+          className={cn(
+            "tracking-[0.15em] uppercase",
+            tone === "emerald"
+              ? "text-emerald-700/45 dark:text-emerald-200/45"
+              : "text-sky-700/45 dark:text-sky-200/45",
+          )}
+        >
+          payload_a
+        </p>
+        <p>{lines[0]}</p>
+      </div>
+      <div className="grid grid-cols-[96px_1fr] gap-2">
+        <p
+          className={cn(
+            "tracking-[0.15em] uppercase",
+            tone === "emerald"
+              ? "text-emerald-700/45 dark:text-emerald-200/45"
+              : "text-sky-700/45 dark:text-sky-200/45",
+          )}
+        >
+          payload_b
+        </p>
+        <p>{lines[1]}</p>
+      </div>
+    </div>
+  );
+}
+
+function LogRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid gap-1 border-b border-emerald-500/30 py-2 sm:grid-cols-[120px_1fr] sm:items-start sm:gap-3 dark:border-emerald-500/15">
+      <p className="text-[11px] tracking-[0.18em] text-emerald-700/70 uppercase dark:text-emerald-200/60">
+        {label}
+      </p>
+      <p className="text-xs break-all text-emerald-900/95 dark:text-emerald-100/95">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function NormalTransactionCard({ log }: { log: NormalTransactionLog }) {
+  const { data: transaction } = useTransaction({ hash: log.hash });
+  const { data: receipt } = useWaitForTransactionReceipt({ hash: log.hash });
+
+  const decoded = useMemo(
+    () => decodeTransactionInput(transaction?.input),
+    [transaction?.input],
+  );
+  const initiator = transaction?.from
+    ? truncate(transaction.from, 10, 8)
+    : "pending...";
+  const method = decoded.method.includes("unknown")
+    ? `${log.methodHint} (${transaction?.input?.slice(0, 10) ?? "0x"})`
+    : decoded.method;
+  const parameters =
+    decoded.parameters === "none" && log.parametersHint
+      ? log.parametersHint
+      : decoded.parameters;
+  const status = receipt?.status ?? "pending";
+  const gasPayer = initiator;
+  const noiseSeed = transaction?.input ?? log.hash;
+
+  return (
+    <article className="rounded-2xl border border-emerald-500/35 bg-transparent p-4 shadow-[0_0_0_1px_rgba(16,185,129,0.08),0_10px_24px_-20px_rgba(16,185,129,0.35)] dark:border-emerald-400/30 dark:bg-[#050c08] dark:shadow-[0_0_0_1px_rgba(16,185,129,0.1),0_20px_40px_-28px_rgba(16,185,129,0.9)]">
+      <div className="mb-3 flex items-center justify-between gap-3 text-xs">
+        <span className="rounded-full border border-emerald-500/45 bg-emerald-500/10 px-2.5 py-1 text-[10px] tracking-[0.16em] text-emerald-800 uppercase dark:border-emerald-400/35 dark:text-emerald-200">
+          {log.source.toUpperCase()} / {status.toUpperCase()}
+        </span>
+        <span className="text-emerald-800/70 dark:text-emerald-200/65">
+          {new Date(log.createdAt).toLocaleTimeString()}
+        </span>
+      </div>
+
+      <NoiseBlock seed={noiseSeed} />
+
+      <div className="mt-2 space-y-1 font-mono">
+        <LogRow label="Initiator" value={initiator} />
+        <LogRow label="Gas payer" value={gasPayer} />
+        <LogRow label="Method" value={method} />
+        <LogRow label="Parameters" value={parameters} />
+        <LogRow label="Privacy lvl" value={log.privacyLevel} />
+      </div>
+
+      <NoiseBlock seed={log.hash} />
+
+      <Link
+        href={`${ARBITRUM_SEPOLIA_EXPLORER}/tx/${log.hash}`}
+        target="_blank"
+        rel="noreferrer"
+        className="mt-3 inline-flex items-center gap-1 text-xs text-emerald-800/90 underline-offset-4 hover:text-emerald-900 hover:underline dark:text-emerald-200/80 dark:hover:text-emerald-100"
+      >
+        View on Arbitrum Sepolia Etherscan
+        <ExternalLink size={12} />
+      </Link>
+    </article>
+  );
+}
+
+function PrivateTransactionPreviewCard() {
+  const payload =
+    "0x8ea6f4db8d3e9b7a68d4a74f6b6daee1885427f6ce01513fda9d7f503d7f53ea247df0a3b198...";
+
+  return (
+    <article className="rounded-2xl border border-sky-500/35 bg-transparent p-4 shadow-[0_0_0_1px_rgba(56,189,248,0.1),0_10px_24px_-20px_rgba(56,189,248,0.4)] dark:border-sky-400/30 dark:bg-[#070910] dark:shadow-[0_0_0_1px_rgba(56,189,248,0.12),0_20px_40px_-28px_rgba(56,189,248,0.9)]">
+      <div className="mb-3 flex items-center justify-between gap-3 text-xs">
+        <span className="rounded-full border border-sky-500/45 bg-sky-500/10 px-2.5 py-1 text-[10px] tracking-[0.16em] text-sky-800 uppercase dark:border-sky-400/35 dark:text-sky-200">
+          PRIVATE / SDK PREVIEW
+        </span>
+        <span className="text-sky-800/70 dark:text-sky-200/70">
+          Not wired in demo yet
+        </span>
+      </div>
+
+      <NoiseBlock seed={payload} tone="sky" />
+
+      <div className="mt-2 space-y-1 font-mono">
+        <div className="grid gap-1 border-b border-sky-500/30 py-2 sm:grid-cols-[120px_1fr] sm:items-start sm:gap-3 dark:border-sky-500/15">
+          <p className="text-[11px] tracking-[0.18em] text-sky-700/70 uppercase dark:text-sky-200/60">
+            Initiator
+          </p>
+          <p className="text-xs break-all text-sky-900/95 dark:text-sky-100/95">
+            relayer/proxy (user hidden)
+          </p>
+        </div>
+        <div className="grid gap-1 border-b border-sky-500/30 py-2 sm:grid-cols-[120px_1fr] sm:items-start sm:gap-3 dark:border-sky-500/15">
+          <p className="text-[11px] tracking-[0.18em] text-sky-700/70 uppercase dark:text-sky-200/60">
+            Gas payer
+          </p>
+          <p className="text-xs break-all text-sky-900/95 dark:text-sky-100/95">
+            relayer (future)
+          </p>
+        </div>
+        <div className="grid gap-1 border-b border-sky-500/30 py-2 sm:grid-cols-[120px_1fr] sm:items-start sm:gap-3 dark:border-sky-500/15">
+          <p className="text-[11px] tracking-[0.18em] text-sky-700/70 uppercase dark:text-sky-200/60">
+            Method
+          </p>
+          <p className="text-xs break-all text-sky-900/95 dark:text-sky-100/95">
+            verifyProof (0x8ea6f4db)
+          </p>
+        </div>
+        <div className="grid gap-1 border-b border-sky-500/30 py-2 sm:grid-cols-[120px_1fr] sm:items-start sm:gap-3 dark:border-sky-500/15">
+          <p className="text-[11px] tracking-[0.18em] text-sky-700/70 uppercase dark:text-sky-200/60">
+            Parameters
+          </p>
+          <p className="text-xs break-all text-sky-900/95 dark:text-sky-100/95">
+            {payload}
+          </p>
+        </div>
+        <div className="grid gap-1 border-b border-sky-500/30 py-2 sm:grid-cols-[120px_1fr] sm:items-start sm:gap-3 dark:border-sky-500/15">
+          <p className="text-[11px] tracking-[0.18em] text-sky-700/70 uppercase dark:text-sky-200/60">
+            Privacy lvl
+          </p>
+          <p className="text-xs break-all text-sky-900/95 dark:text-sky-100/95">
+            Private
+          </p>
+        </div>
+      </div>
+
+      <NoiseBlock seed={`${payload}-tail`} tone="sky" />
+    </article>
+  );
+}
+
 export default function DemoPage() {
   const [activeTab, setActiveTab] = useState<DemoTab>("dao");
-
+  const [normalLogs, setNormalLogs] = useState<NormalTransactionLog[]>([]);
+  const [privateLogs] = useState<string[]>([]);
   const { theme, setTheme } = useTheme();
 
   const triggerIncognito = () => {
     setTheme(theme === "dark" ? "light" : "dark");
   };
+
+  const onNormalTransaction = useCallback<NormalTransactionReporter>((tx) => {
+    setNormalLogs((current) => {
+      if (current.some((item) => item.hash === tx.hash)) {
+        return current;
+      }
+
+      const nextLog: NormalTransactionLog = {
+        ...tx,
+        id: `${tx.hash}-${Date.now()}`,
+        createdAt: Date.now(),
+      };
+
+      return [nextLog, ...current].slice(0, 6);
+    });
+  }, []);
 
   const tabContent = {
     dao: {
@@ -26,7 +312,7 @@ export default function DemoPage() {
         theme === "dark" ? "privately through Privacy Protocol" : "publicly"
       }`,
       action: "vote",
-      component: <DaoDemoContent />,
+      component: <DaoDemoContent onNormalTransaction={onNormalTransaction} />,
     },
     defi: {
       title: "DeFi Swap",
@@ -34,7 +320,7 @@ export default function DemoPage() {
         theme === "dark" ? "privately through Privacy Protocol" : "publicly"
       }`,
       action: "swap",
-      component: <DefiDemoContent />,
+      component: <DefiDemoContent onNormalTransaction={onNormalTransaction} />,
     },
   };
 
@@ -43,17 +329,17 @@ export default function DemoPage() {
   return (
     <main className="bg-background relative min-h-screen w-full overflow-x-hidden">
       <div className="border-primary mt-10 h-10 w-screen border-y"></div>
-      <section className="relative z-10 container mx-auto flex items-start justify-between gap-10 px-4 pb-20">
-        <div className="w-1/2">
+      <section className="relative z-10 container mx-auto flex flex-col items-start gap-10 px-4 pb-20 lg:flex-row lg:justify-between">
+        <div className="w-full lg:w-1/2">
           <div className="mt-2 mb-8 space-y-4">
             <div className="flex gap-4">
               <button
                 onClick={() => setActiveTab("dao")}
                 className={cn(
-                  "flex flex-1 flex-col items-center justify-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium transition-all",
+                  "flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition-all",
                   activeTab === "dao"
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border/50 bg-background/50 hover:border-primary/50 text-muted-foreground hover:bg-background/80",
+                    ? "border-emerald-500/45 bg-emerald-500/10 text-emerald-800 shadow-[0_0_0_1px_rgba(16,185,129,0.14),0_8px_20px_-16px_rgba(16,185,129,0.45)] dark:border-emerald-300/60 dark:bg-[radial-gradient(circle_at_top,#1a3f2c_0%,#0b1711_100%)] dark:text-emerald-100 dark:shadow-[0_0_0_1px_rgba(16,185,129,0.18),0_10px_20px_-16px_rgba(16,185,129,0.95)]"
+                    : "border-emerald-500/35 bg-transparent text-emerald-700/85 hover:border-emerald-500/55 hover:text-emerald-900 dark:border-emerald-500/25 dark:bg-[#050b08] dark:text-emerald-200/70 dark:hover:border-emerald-300/40 dark:hover:text-emerald-100",
                 )}
               >
                 <Vote size={18} />
@@ -62,10 +348,10 @@ export default function DemoPage() {
               <button
                 onClick={() => setActiveTab("defi")}
                 className={cn(
-                  "flex flex-1 flex-col items-center justify-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium transition-all",
+                  "flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition-all",
                   activeTab === "defi"
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border/50 bg-background/50 hover:border-primary/50 text-muted-foreground hover:bg-background/80",
+                    ? "border-emerald-500/45 bg-emerald-500/10 text-emerald-800 shadow-[0_0_0_1px_rgba(16,185,129,0.14),0_8px_20px_-16px_rgba(16,185,129,0.45)] dark:border-emerald-300/60 dark:bg-[radial-gradient(circle_at_top,#1a3f2c_0%,#0b1711_100%)] dark:text-emerald-100 dark:shadow-[0_0_0_1px_rgba(16,185,129,0.18),0_10px_20px_-16px_rgba(16,185,129,0.95)]"
+                    : "border-emerald-500/35 bg-transparent text-emerald-700/85 hover:border-emerald-500/55 hover:text-emerald-900 dark:border-emerald-500/25 dark:bg-[#050b08] dark:text-emerald-200/70 dark:hover:border-emerald-300/40 dark:hover:text-emerald-100",
                 )}
               >
                 <LayoutDashboard size={18} />
@@ -78,7 +364,7 @@ export default function DemoPage() {
               {currentTab.title}
             </h1>
             <div className="space-y-1">
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <p className="text-muted-foreground text-sm">
                   {currentTab.description}
                 </p>
@@ -99,16 +385,68 @@ export default function DemoPage() {
           </div>
           <div className="min-h-[500px]">{currentTab.component}</div>
         </div>
-        <div className="border-primary h-screen border"></div>
-        <div className="w-1/2">
+
+        <div className="hidden self-stretch border border-emerald-500/35 lg:block dark:border-emerald-500/30"></div>
+
+        <div className="w-full lg:w-1/2">
           <div className="mb-10 pt-6">
             <h1 className="mb-2 text-3xl font-bold tracking-tight">
-              Blockchain Explorer
+              Transaction Logs
             </h1>
             <p className="text-muted-foreground text-sm">
-              Switch between normal and incognito mode to see the difference in
-              the transaction logs.
+              Perform transactions in both public and incogito (private) modes
+              to see the difference in metadata.
             </p>
+            <Link
+              href={ARBITRUM_SEPOLIA_EXPLORER}
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary mt-1 inline-flex items-center gap-1 text-xs underline underline-offset-4"
+            >
+              Open Arbitrum Sepolia Etherscan
+              <ExternalLink size={12} />
+            </Link>
+
+            <div className="mt-6 space-y-4 rounded-2xl border border-emerald-500/35 bg-transparent p-4 text-emerald-900 shadow-[0_0_0_1px_rgba(16,185,129,0.08),0_12px_28px_-22px_rgba(16,185,129,0.45)] dark:border-emerald-500/30 dark:bg-[radial-gradient(circle_at_top,#123223_0%,#070d0a_46%,#040806_100%)] dark:text-emerald-100 dark:shadow-none">
+              <div className="mb-2 flex items-center gap-2 text-sm">
+                <TerminalSquare size={14} />
+                <p className="font-mono tracking-[0.18em] uppercase">
+                  Normal Transactions
+                </p>
+              </div>
+
+              {normalLogs.length === 0 ? (
+                <div className="rounded-xl border border-emerald-500/35 bg-emerald-500/5 p-4 font-mono text-xs text-emerald-800/80 dark:border-emerald-500/20 dark:text-emerald-200/70">
+                  Perform a vote or swap to see its logs here.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {normalLogs.map((log) => (
+                    <NormalTransactionCard key={log.id} log={log} />
+                  ))}
+                </div>
+              )}
+
+              <div className="my-4 border-t border-dashed border-emerald-500/35 dark:border-emerald-400/20"></div>
+
+              <div className="mb-2 flex items-center gap-2 text-sm">
+                <Lock size={14} />
+                <p className="font-mono tracking-[0.18em] uppercase">
+                  Private Transactions
+                </p>
+              </div>
+              {privateLogs.length === 0 ? (
+                <div className="rounded-xl border border-sky-500/35 bg-sky-500/5 p-4 font-mono text-xs text-sky-800/85 dark:border-sky-500/30 dark:text-sky-100/75">
+                  Perform a private transaction to see its logs here.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {privateLogs.map((item) => (
+                    <PrivateTransactionPreviewCard key={item} />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </section>

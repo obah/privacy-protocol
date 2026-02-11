@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,13 +16,21 @@ import {
 import { DEMO_CONTRACTS, DEMO_DEFI_ABI, ERC20_ABI } from "@/lib/demo-config";
 import { formatEther, parseEther } from "viem";
 import { toast } from "sonner";
+import type { NormalTransactionReporter } from "./transaction-log-types";
 
-export default function DefiDemoContent() {
+interface DefiDemoContentProps {
+  onNormalTransaction?: NormalTransactionReporter;
+}
+
+export default function DefiDemoContent({
+  onNormalTransaction,
+}: DefiDemoContentProps) {
   const { address } = useAccount();
   const [amountIn, setAmountIn] = useState("");
   const [pendingTxType, setPendingTxType] = useState<
     "approval" | "swap" | null
   >(null);
+  const lastLoggedHashRef = useRef<`0x${string}` | null>(null);
 
   const { data: ppUSDBalance } = useReadContract({
     address: DEMO_CONTRACTS.ppUSD,
@@ -70,28 +78,53 @@ export default function DefiDemoContent() {
   const isPending = isWritePending || isConfirming;
 
   useEffect(() => {
+    if (!hash || !onNormalTransaction || lastLoggedHashRef.current === hash) {
+      return;
+    }
+
+    const txKind = pendingTxType === "approval" ? "approve" : "swap";
+    const parametersHint =
+      txKind === "approve"
+        ? `spender=${DEMO_CONTRACTS.DemoDefi}, amount=${amountIn || "0"}`
+        : `amountIn=${amountIn || "0"}`;
+
+    onNormalTransaction({
+      hash,
+      source: "defi",
+      methodHint: txKind,
+      parametersHint,
+      privacyLevel: "Public",
+    });
+    lastLoggedHashRef.current = hash;
+  }, [hash, onNormalTransaction, pendingTxType, amountIn]);
+
+  useEffect(() => {
     if (isSuccess && pendingTxType) {
       if (pendingTxType === "approval") {
         toast.success("Approval successful! Initiating swap...");
         refetchAllowance();
         setTimeout(() => {
+          setPendingTxType("swap");
           writeContract({
             address: DEMO_CONTRACTS.DemoDefi,
             abi: DEMO_DEFI_ABI,
             functionName: "swap",
             args: [parseEther(amountIn)],
           });
-          setPendingTxType("swap");
         }, 1000);
       } else if (pendingTxType === "swap") {
         toast.success("Swap successful!");
-        setAmountIn("");
-        setPendingTxType(null);
+        setTimeout(() => {
+          setAmountIn("");
+          setPendingTxType(null);
+        }, 0);
       }
     }
     if (writeError) {
       toast.error(`Transaction failed: ${writeError.message}`);
-      setPendingTxType(null);
+      setTimeout(() => {
+        setPendingTxType(null);
+      }, 0);
     }
   }, [
     isSuccess,
@@ -113,21 +146,21 @@ export default function DefiDemoContent() {
     }
 
     if (needsApproval) {
+      setPendingTxType("approval");
       writeContract({
         address: DEMO_CONTRACTS.ppUSD,
         abi: ERC20_ABI,
         functionName: "approve",
         args: [DEMO_CONTRACTS.DemoDefi, parseEther(amountIn)],
       });
-      setPendingTxType("approval");
     } else {
+      setPendingTxType("swap");
       writeContract({
         address: DEMO_CONTRACTS.DemoDefi,
         abi: DEMO_DEFI_ABI,
         functionName: "swap",
         args: [parseEther(amountIn)],
       });
-      setPendingTxType("swap");
     }
   };
 
@@ -139,22 +172,24 @@ export default function DefiDemoContent() {
     : "0.00";
 
   return (
-    <div className="space-y-5">
-      <Card className="border-border/50 bg-background/40 mx-auto w-full max-w-lg shadow-2xl backdrop-blur-xl dark:border-green-100/50">
+    <div className="space-y-10">
+      <Card className="mx-auto w-full max-w-lg border border-emerald-500/35 bg-transparent shadow-[0_0_0_1px_rgba(16,185,129,0.08),0_12px_28px_-22px_rgba(16,185,129,0.45)] backdrop-blur-xl dark:border-emerald-500/30 dark:bg-[radial-gradient(circle_at_top,#123223_0%,#070d0a_46%,#040806_100%)] dark:shadow-[0_0_0_1px_rgba(16,185,129,0.1),0_20px_40px_-28px_rgba(16,185,129,0.9)]">
         <CardHeader className="pb-4">
-          <CardTitle>Swap Tokens</CardTitle>
+          <CardTitle className="text-emerald-900 dark:text-emerald-50">
+            Swap Tokens
+          </CardTitle>
         </CardHeader>
 
         <CardContent className="space-y-4 rounded-md">
-          <div className="bg-background/50 border-border/50 space-y-2 border p-4">
-            <div className="text-muted-foreground flex justify-between text-sm">
+          <div className="space-y-2 border border-emerald-500/35 bg-emerald-500/5 p-4 dark:border-emerald-500/30 dark:bg-[#06120d]">
+            <div className="flex justify-between text-sm text-emerald-800/85 dark:text-emerald-100/70">
               <Label>Pay</Label>
               <span>Balance: {formattedBalanceIn}</span>
             </div>
 
             <div className="flex items-center gap-4">
               <Input
-                className="placeholder:text-muted-foreground/50 h-10 w-full bg-transparent pl-2 text-2xl font-bold shadow-none focus-visible:ring-0"
+                className="h-10 w-full bg-transparent pl-2 text-2xl font-bold text-emerald-900 shadow-none placeholder:text-emerald-700/45 focus-visible:ring-0 dark:text-emerald-50 dark:placeholder:text-emerald-100/40"
                 placeholder="0.0"
                 value={amountIn}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -162,44 +197,44 @@ export default function DefiDemoContent() {
                 }
               />
 
-              <div className="bg-background/50 border-border/50 flex w-[120px] items-center justify-center rounded-sm border py-[10px] font-medium dark:border-green-100/50">
+              <div className="flex w-[120px] items-center justify-center rounded-sm border border-emerald-500/45 bg-emerald-500/10 py-[10px] font-medium text-emerald-800 dark:border-emerald-500/35 dark:text-emerald-100">
                 <span className="flex items-center gap-2">ppUSD</span>
               </div>
             </div>
-            <div className="text-muted-foreground text-xs">
+            <div className="text-xs text-emerald-800/80 dark:text-emerald-100/65">
               ≈ ${amountIn || "0.00"}
             </div>
           </div>
 
           <div className="relative z-10 -my-2 flex items-center justify-center">
-            <div className="bg-background border-border/50 text-muted-foreground rounded-xl border p-2 dark:border-green-100/50">
+            <div className="rounded-xl border border-emerald-500/45 bg-emerald-500/5 p-2 text-emerald-800/85 dark:border-emerald-500/35 dark:bg-[#06120d] dark:text-emerald-100/80">
               <ArrowDown size={16} />
             </div>
           </div>
 
-          <div className="bg-background/50 border-border/50 space-y-2 rounded-xl border p-4">
-            <div className="text-muted-foreground flex justify-between text-sm">
+          <div className="space-y-2 rounded-xl border border-emerald-500/35 bg-emerald-500/5 p-4 dark:border-emerald-500/30 dark:bg-[#06120d]">
+            <div className="flex justify-between text-sm text-emerald-800/85 dark:text-emerald-100/70">
               <Label>Receive</Label>
               <span>Balance: {formattedBalanceOut}</span>
             </div>
             <div className="flex items-center gap-4">
               <Input
-                className="placeholder:text-muted-foreground/50 h-10 w-full bg-transparent p-0 pl-2 text-2xl font-bold shadow-none focus-visible:ring-0"
+                className="h-10 w-full bg-transparent p-0 pl-2 text-2xl font-bold text-emerald-900 shadow-none placeholder:text-emerald-700/45 focus-visible:ring-0 dark:text-emerald-50 dark:placeholder:text-emerald-100/40"
                 placeholder="0.0"
                 readOnly
                 value={amountIn} // 1:1 swap for demo
               />
-              <div className="bg-background/50 border-border/50 flex w-[120px] items-center justify-center rounded-sm border py-[10px] font-medium dark:border-green-100/50">
+              <div className="flex w-[120px] items-center justify-center rounded-sm border border-emerald-500/45 bg-emerald-500/10 py-[10px] font-medium text-emerald-800 dark:border-emerald-500/35 dark:text-emerald-100">
                 <span className="flex items-center gap-2">USDTpp</span>
               </div>
             </div>
-            <div className="text-muted-foreground text-xs">
+            <div className="text-xs text-emerald-800/80 dark:text-emerald-100/65">
               ≈ ${amountIn || "0.00"}
             </div>
           </div>
 
           <div className="space-y-2 pt-2">
-            <div className="text-muted-foreground flex justify-between text-sm">
+            <div className="flex justify-between text-sm text-emerald-800/80 dark:text-emerald-100/65">
               <div className="flex items-center gap-1">
                 <span>Privacy Fee</span>
                 <Info size={12} />
@@ -209,7 +244,7 @@ export default function DefiDemoContent() {
           </div>
 
           <Button
-            className="mt-4 h-12 w-full text-lg font-semibold"
+            className="mt-4 h-12 w-full border border-emerald-500/50 bg-emerald-500/15 text-lg font-semibold text-emerald-900 hover:bg-emerald-500/25 dark:border-emerald-300/45 dark:text-emerald-50"
             onClick={handleAction}
             disabled={isPending || !address || !amountIn}
           >

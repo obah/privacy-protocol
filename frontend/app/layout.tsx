@@ -36,7 +36,7 @@ export default function RootLayout({
             defaultTheme="dark"
             enableSystem={false}
           >
-            <Toaster />
+            <Toaster position="top-center" />
             {children}
           </ThemeProvider>
         </Web3Provider>

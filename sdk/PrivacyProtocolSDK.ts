@@ -36,6 +36,19 @@ export interface ActionRequest {
   newCommitment: string;
 }
 
+export interface PrivateTransactionDetails {
+  txHash: string;
+  initiator: string;
+  gasPayer: string;
+  method: string;
+  methodId: string;
+  parameters: string;
+  privacyLevel: "Private";
+  gasUsed: string | null;
+  status: "pending" | "success" | "reverted";
+  to: string | null;
+}
+
 const PRIVACY_PROTOCOL_POOL_ABI = [
   "function deposit(address token, uint256 amount, bytes32 commitment) external",
   "function withdraw(address token, address recipient, uint256 amount, bytes32 nullifierHash, bytes calldata proof, bytes32 rootHash, bytes32 calldataHash, bytes32 newCommitment) external",
@@ -211,6 +224,46 @@ export class PrivacyProtocolSDK {
       newNullifier: newNullifier,
       newCommitment: newCommitment,
       proxyAddress,
+    };
+  }
+
+  async getPrivateTransactionDetails(
+    txHash: string,
+  ): Promise<PrivateTransactionDetails> {
+    const tx = await this.provider.getTransaction(txHash);
+
+    if (!tx) {
+      throw new Error(`Transaction not found for hash: ${txHash}`);
+    }
+
+    const receipt = await this.provider.getTransactionReceipt(txHash);
+    const methodId = tx.data ? tx.data.slice(0, 10) : "0x";
+
+    let methodName = "verifyProof";
+    try {
+      const parsedTx = this.contract.interface.parseTransaction({
+        data: tx.data,
+      });
+      if (parsedTx?.name) {
+        methodName = parsedTx.name;
+      }
+    } catch {}
+
+    return {
+      txHash,
+      initiator: tx.from,
+      gasPayer: tx.from,
+      method: `${methodName} (${methodId})`,
+      methodId,
+      parameters: tx.data,
+      privacyLevel: "Private",
+      gasUsed: receipt?.gasUsed?.toString() ?? null,
+      status: receipt
+        ? receipt.status === 1
+          ? "success"
+          : "reverted"
+        : "pending",
+      to: tx.to,
     };
   }
 
