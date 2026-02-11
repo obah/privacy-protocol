@@ -3,6 +3,7 @@ import { mainnet, sepolia, arbitrumSepolia } from "wagmi/chains";
 import { getDefaultConfig } from "connectkit";
 
 const WALLET_ID = process.env.NEXT_PUBLIC_WALLET_ID;
+const ALCHEMY_ID = process.env.NEXT_PUBLIC_ALCHEMY_ID;
 
 // export const wagmi_config = createConfig({
 //   connectors: [familyAccountsConnector()],
@@ -18,10 +19,12 @@ const WALLET_ID = process.env.NEXT_PUBLIC_WALLET_ID;
 
 export const wagmi_config = createConfig(
   getDefaultConfig({
-    chains: [mainnet, sepolia, arbitrumSepolia],
+    chains: [arbitrumSepolia],
     transports: {
-      [mainnet.id]: http(
-        `https://eth-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_ID}`,
+      // [mainnet.id]: http(`https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_ID}`),
+      // [sepolia.id]: http(`https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_ID}`),
+      [arbitrumSepolia.id]: http(
+        `https://arb-sepolia.g.alchemy.com/v2/${ALCHEMY_ID}`,
       ),
     },
     walletConnectProjectId: WALLET_ID ?? "",
