@@ -1,30 +1,41 @@
-import { Barretenberg, Fr } from "@aztec/bb.js";
+import type { Barretenberg, Fr } from "@aztec/bb.js";
+import { loadBb } from "./bb";
 
 let bbInstance: Barretenberg | undefined;
+let frClass: typeof Fr | undefined;
 
-function toFr(value: Fr | string): Fr {
+async function getFrClass(): Promise<typeof Fr> {
+  if (!frClass) {
+    const bbModule = await loadBb();
+    frClass = bbModule.Fr;
+  }
+
+  return frClass;
+}
+
+async function toFr(value: Fr | string): Promise<Fr> {
   if (typeof value !== "string") {
     return value;
   }
 
+  const FrCtor = await getFrClass();
+
   if (value.startsWith("0x") || value.startsWith("0X")) {
-    return new Fr(BigInt(value));
+    return new FrCtor(BigInt(value));
   }
 
-  return Fr.fromString(value);
+  return FrCtor.fromString(value);
 }
 
 async function getBb(): Promise<Barretenberg> {
   if (!bbInstance) {
-    bbInstance = await Barretenberg.new();
-  }
-  return bbInstance;
-}
+    const bbModule = await loadBb();
+    const BarretenbergCtor = bbModule.Barretenberg;
 
-export interface CommitmentData {
-  secret: Fr;
-  nullifier: Fr;
-  commitment: Fr;
+    bbInstance = await BarretenbergCtor.new();
+  }
+
+  return bbInstance;
 }
 
 /**
@@ -34,9 +45,10 @@ export async function generateCommitment(
   amount: string | number | bigint,
 ): Promise<CommitmentData> {
   const bb = await getBb();
-  const amountFr = new Fr(BigInt(amount));
-  const nullifier = Fr.random();
-  const secret = Fr.random();
+  const FrCtor = await getFrClass();
+  const amountFr = new FrCtor(BigInt(amount));
+  const nullifier = FrCtor.random();
+  const secret = FrCtor.random();
   const commitment = await bb.poseidon2Hash([nullifier, secret, amountFr]);
 
   return {
@@ -53,7 +65,7 @@ export async function computeNullifierHash(
   nullifier: Fr | string,
 ): Promise<Fr> {
   const bb = await getBb();
-  const nullifierFr = toFr(nullifier);
+  const nullifierFr = await toFr(nullifier);
   return await bb.poseidon2Hash([nullifierFr]);
 }
 
@@ -66,9 +78,10 @@ export async function computeCommitment(
   amount: string | number | bigint,
 ): Promise<Fr> {
   const bb = await getBb();
-  const nullifierFr = toFr(nullifier);
-  const secretFr = toFr(secret);
-  const amountFr = new Fr(BigInt(amount));
+  const FrCtor = await getFrClass();
+  const nullifierFr = await toFr(nullifier);
+  const secretFr = await toFr(secret);
+  const amountFr = new FrCtor(BigInt(amount));
   return await bb.poseidon2Hash([nullifierFr, secretFr, amountFr]);
 }
 
@@ -80,8 +93,8 @@ export async function computeActionContextHash(
   dataHash: Fr | string,
 ): Promise<Fr> {
   const bb = await getBb();
-  const externalAddressFr = toFr(externalAddress);
-  const dataHashFr = toFr(dataHash);
+  const externalAddressFr = await toFr(externalAddress);
+  const dataHashFr = await toFr(dataHash);
   return await bb.poseidon2Hash([externalAddressFr, dataHashFr]);
 }
 
@@ -96,9 +109,10 @@ export async function computeContextBoundCommitment(
   dataHash: Fr | string,
 ): Promise<Fr> {
   const bb = await getBb();
-  const newNullifierFr = toFr(newNullifier);
-  const secretFr = toFr(secret);
-  const amountLeftFr = new Fr(BigInt(amountLeft));
+  const FrCtor = await getFrClass();
+  const newNullifierFr = await toFr(newNullifier);
+  const secretFr = await toFr(secret);
+  const amountLeftFr = new FrCtor(BigInt(amountLeft));
   const actionContextHash = await computeActionContextHash(
     externalAddress,
     dataHash,
@@ -109,4 +123,9 @@ export async function computeContextBoundCommitment(
     amountLeftFr,
     actionContextHash,
   ]);
+}
+export interface CommitmentData {
+  secret: Fr;
+  nullifier: Fr;
+  commitment: Fr;
 }

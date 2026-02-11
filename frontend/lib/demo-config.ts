@@ -1,6 +1,9 @@
 import { Address } from "viem";
 
 export const DEMO_CONTRACTS = {
+  PrivacyProtocolPool:
+    (process.env.NEXT_PUBLIC_PRIVACY_PROTOCOL_POOL_ADDRESS as Address) ??
+    ("0xA0806cf43f5E9A2C42c8291676EE814b39A6413e" as Address),
   DemoDefi: "0xA8DCc58D83Cae0FfF1076832Ef7E5a5D9B96D9d7" as Address,
   ppUSD: "0xba2A1482708e56b21f8EC7842650381855645c9A" as Address,
   USDTpp: "0x9eB5C2080E98c44b15cfd5a822414380458A7634" as Address,

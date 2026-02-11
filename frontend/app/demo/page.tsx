@@ -6,6 +6,8 @@ import DefiDemoContent from "@/components/demo/DefiDemoContent";
 import type {
   NormalTransactionEvent,
   NormalTransactionReporter,
+  PrivateTransactionEvent,
+  PrivateTransactionReporter,
 } from "@/components/demo/transaction-log-types";
 import { DEMO_DAO_ABI, DEMO_DEFI_ABI, ERC20_ABI } from "@/lib/demo-config";
 import { cn } from "@/lib/utils";
@@ -29,12 +31,31 @@ interface NormalTransactionLog extends NormalTransactionEvent {
   createdAt: number;
 }
 
+interface PrivateTransactionLog extends PrivateTransactionEvent {
+  id: string;
+  createdAt: number;
+}
+
 const ARBITRUM_SEPOLIA_EXPLORER = "https://sepolia.arbiscan.io";
 const NORMAL_DECODE_ABI = [...DEMO_DAO_ABI, ...DEMO_DEFI_ABI, ...ERC20_ABI];
 
 function truncate(value: string, start: number = 12, end: number = 8): string {
   if (value.length <= start + end + 3) return value;
   return `${value.slice(0, start)}...${value.slice(-end)}`;
+}
+
+function truncatePrivateParameters(value: string): string {
+  if (!value) return "none";
+
+  if (value.startsWith("0x")) {
+    return truncate(value, 32, 12);
+  }
+
+  if (value.length > 120) {
+    return `${value.slice(0, 96)}...${value.slice(-16)}`;
+  }
+
+  return value;
 }
 
 function stringifyArgument(argument: unknown): string {
@@ -214,67 +235,69 @@ function NormalTransactionCard({ log }: { log: NormalTransactionLog }) {
   );
 }
 
-function PrivateTransactionPreviewCard() {
-  const payload =
-    "0x8ea6f4db8d3e9b7a68d4a74f6b6daee1885427f6ce01513fda9d7f503d7f53ea247df0a3b198...";
+function PrivateTransactionCard({ log }: { log: PrivateTransactionLog }) {
+  const { data: transaction } = useTransaction({ hash: log.hash });
+  const { data: receipt } = useWaitForTransactionReceipt({ hash: log.hash });
+
+  const txSenderRaw = log.metadata?.initiator ?? transaction?.from ?? "pending...";
+  const gasPayerRaw = log.metadata?.gasPayer ?? transaction?.from ?? "pending...";
+  const targetCallerRaw = log.metadata?.proxyAddress;
+  const method =
+    log.metadata?.method ??
+    `${log.methodHint} (${transaction?.input?.slice(0, 10) ?? "0x"})`;
+  const parameters = truncatePrivateParameters(
+    log.metadata?.parameters ?? log.parametersHint,
+  );
+  const status =
+    log.metadata?.status ??
+    (receipt?.status === "success"
+      ? "success"
+      : receipt?.status === "reverted"
+        ? "reverted"
+        : "pending");
+  const noiseSeed = transaction?.input ?? log.hash;
 
   return (
     <article className="rounded-2xl border border-sky-500/35 bg-transparent p-4 shadow-[0_0_0_1px_rgba(56,189,248,0.1),0_10px_24px_-20px_rgba(56,189,248,0.4)] dark:border-sky-400/30 dark:bg-[#070910] dark:shadow-[0_0_0_1px_rgba(56,189,248,0.12),0_20px_40px_-28px_rgba(56,189,248,0.9)]">
       <div className="mb-3 flex items-center justify-between gap-3 text-xs">
         <span className="rounded-full border border-sky-500/45 bg-sky-500/10 px-2.5 py-1 text-[10px] tracking-[0.16em] text-sky-800 uppercase dark:border-sky-400/35 dark:text-sky-200">
-          PRIVATE / SDK PREVIEW
+          {log.source.toUpperCase()} / {status.toUpperCase()}
         </span>
         <span className="text-sky-800/70 dark:text-sky-200/70">
-          Not wired in demo yet
+          {new Date(log.createdAt).toLocaleTimeString()}
         </span>
       </div>
 
-      <NoiseBlock seed={payload} tone="sky" />
+      <NoiseBlock seed={noiseSeed} tone="sky" />
 
       <div className="mt-2 space-y-1 font-mono">
-        <div className="grid gap-1 border-b border-sky-500/30 py-2 sm:grid-cols-[120px_1fr] sm:items-start sm:gap-3 dark:border-sky-500/15">
-          <p className="text-[11px] tracking-[0.18em] text-sky-700/70 uppercase dark:text-sky-200/60">
-            Initiator
-          </p>
-          <p className="text-xs break-all text-sky-900/95 dark:text-sky-100/95">
-            relayer/proxy (user hidden)
-          </p>
-        </div>
-        <div className="grid gap-1 border-b border-sky-500/30 py-2 sm:grid-cols-[120px_1fr] sm:items-start sm:gap-3 dark:border-sky-500/15">
-          <p className="text-[11px] tracking-[0.18em] text-sky-700/70 uppercase dark:text-sky-200/60">
-            Gas payer
-          </p>
-          <p className="text-xs break-all text-sky-900/95 dark:text-sky-100/95">
-            relayer (future)
-          </p>
-        </div>
-        <div className="grid gap-1 border-b border-sky-500/30 py-2 sm:grid-cols-[120px_1fr] sm:items-start sm:gap-3 dark:border-sky-500/15">
-          <p className="text-[11px] tracking-[0.18em] text-sky-700/70 uppercase dark:text-sky-200/60">
-            Method
-          </p>
-          <p className="text-xs break-all text-sky-900/95 dark:text-sky-100/95">
-            verifyProof (0x8ea6f4db)
-          </p>
-        </div>
-        <div className="grid gap-1 border-b border-sky-500/30 py-2 sm:grid-cols-[120px_1fr] sm:items-start sm:gap-3 dark:border-sky-500/15">
-          <p className="text-[11px] tracking-[0.18em] text-sky-700/70 uppercase dark:text-sky-200/60">
-            Parameters
-          </p>
-          <p className="text-xs break-all text-sky-900/95 dark:text-sky-100/95">
-            {payload}
-          </p>
-        </div>
-        <div className="grid gap-1 border-b border-sky-500/30 py-2 sm:grid-cols-[120px_1fr] sm:items-start sm:gap-3 dark:border-sky-500/15">
-          <p className="text-[11px] tracking-[0.18em] text-sky-700/70 uppercase dark:text-sky-200/60">
-            Privacy lvl
-          </p>
-          <p className="text-xs break-all text-sky-900/95 dark:text-sky-100/95">
-            Private
-          </p>
-        </div>
+        <LogRow label="Tx sender" value={truncate(txSenderRaw, 10, 8)} />
+        <LogRow label="Gas payer" value={truncate(gasPayerRaw, 10, 8)} />
+        {targetCallerRaw ? (
+          <LogRow
+            label="Target caller"
+            value={truncate(targetCallerRaw, 10, 8)}
+          />
+        ) : null}
+        <LogRow label="Method" value={method} />
+        <LogRow label="Parameters" value={parameters} />
+        {log.metadata?.noteCommitment ? (
+          <LogRow label="Commitment" value={log.metadata.noteCommitment} />
+        ) : null}
+        <LogRow label="Privacy lvl" value={log.privacyLevel} />
       </div>
 
-      <NoiseBlock seed={`${payload}-tail`} tone="sky" />
+      <NoiseBlock seed={log.hash} tone="sky" />
+
+      <Link
+        href={`${ARBITRUM_SEPOLIA_EXPLORER}/tx/${log.hash}`}
+        target="_blank"
+        rel="noreferrer"
+        className="mt-3 inline-flex items-center gap-1 text-xs text-sky-800/90 underline-offset-4 hover:text-sky-900 hover:underline dark:text-sky-200/80 dark:hover:text-sky-100"
+      >
+        View on Arbitrum Sepolia Etherscan
+        <ExternalLink size={12} />
+      </Link>
     </article>
   );
 }
@@ -282,11 +305,12 @@ function PrivateTransactionPreviewCard() {
 export default function DemoPage() {
   const [activeTab, setActiveTab] = useState<DemoTab>("dao");
   const [normalLogs, setNormalLogs] = useState<NormalTransactionLog[]>([]);
-  const [privateLogs] = useState<string[]>([]);
-  const { theme, setTheme } = useTheme();
+  const [privateLogs, setPrivateLogs] = useState<PrivateTransactionLog[]>([]);
+  const { theme, resolvedTheme, setTheme } = useTheme();
+  const isIncognito = (resolvedTheme ?? theme) === "dark";
 
   const triggerIncognito = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
+    setTheme(isIncognito ? "light" : "dark");
   };
 
   const onNormalTransaction = useCallback<NormalTransactionReporter>((tx) => {
@@ -305,22 +329,54 @@ export default function DemoPage() {
     });
   }, []);
 
+  const onPrivateTransaction = useCallback<PrivateTransactionReporter>((tx) => {
+    setPrivateLogs((current) => {
+      if (
+        current.some(
+          (item) => item.hash === tx.hash && item.methodHint === tx.methodHint,
+        )
+      ) {
+        return current;
+      }
+
+      const nextLog: PrivateTransactionLog = {
+        ...tx,
+        id: `${tx.hash}-${tx.methodHint}-${Date.now()}`,
+        createdAt: Date.now(),
+      };
+
+      return [nextLog, ...current].slice(0, 8);
+    });
+  }, []);
+
   const tabContent = {
     dao: {
       title: "Governance",
       description: `Vote on proposals ${
-        theme === "dark" ? "privately through Privacy Protocol" : "publicly"
+        isIncognito ? "privately through Privacy Protocol" : "publicly"
       }`,
       action: "vote",
-      component: <DaoDemoContent onNormalTransaction={onNormalTransaction} />,
+      component: (
+        <DaoDemoContent
+          isIncognito={isIncognito}
+          onNormalTransaction={onNormalTransaction}
+          onPrivateTransaction={onPrivateTransaction}
+        />
+      ),
     },
     defi: {
       title: "DeFi Swap",
       description: `Swap tokens ${
-        theme === "dark" ? "privately through Privacy Protocol" : "publicly"
+        isIncognito ? "privately through Privacy Protocol" : "publicly"
       }`,
       action: "swap",
-      component: <DefiDemoContent onNormalTransaction={onNormalTransaction} />,
+      component: (
+        <DefiDemoContent
+          isIncognito={isIncognito}
+          onNormalTransaction={onNormalTransaction}
+          onPrivateTransaction={onPrivateTransaction}
+        />
+      ),
     },
   };
 
@@ -373,7 +429,7 @@ export default function DemoPage() {
                   className="text-primary h-auto p-0 underline"
                   onClick={triggerIncognito}
                 >
-                  {theme === "dark"
+                  {isIncognito
                     ? `Turn off incognito mode to ${currentTab.action} publicly`
                     : `Turn on incognito mode to ${currentTab.action} privately`}
                 </Button>
@@ -435,6 +491,10 @@ export default function DemoPage() {
                   Private Transactions
                 </p>
               </div>
+              <p className="mb-2 text-xs text-sky-800/80 dark:text-sky-200/70">
+                Pool transaction sender is public. For `executeAction`, target
+                contracts see the privacy proxy as caller.
+              </p>
               {privateLogs.length === 0 ? (
                 <div className="rounded-xl border border-sky-500/35 bg-sky-500/5 p-4 font-mono text-xs text-sky-800/85 dark:border-sky-500/30 dark:text-sky-100/75">
                   Perform a private transaction to see its logs here.
@@ -442,7 +502,7 @@ export default function DemoPage() {
               ) : (
                 <div className="space-y-3">
                   {privateLogs.map((item) => (
-                    <PrivateTransactionPreviewCard key={item} />
+                    <PrivateTransactionCard key={item.id} log={item} />
                   ))}
                 </div>
               )}

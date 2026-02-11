@@ -16,21 +16,51 @@ import {
 import { DEMO_CONTRACTS, DEMO_DEFI_ABI, ERC20_ABI } from "@/lib/demo-config";
 import { formatEther, parseEther } from "viem";
 import { toast } from "sonner";
-import type { NormalTransactionReporter } from "./transaction-log-types";
+import type {
+  NormalTransactionReporter,
+  PrivateTransactionReporter,
+} from "./transaction-log-types";
+import { Contract, Interface } from "ethers";
+import {
+  useDeposit,
+  useExecuteAction,
+} from "privacy-protocol/hooks";
+import type { PrivateTransactionDetails } from "privacy-protocol/core";
+import { useEthersFromWagmi } from "@/lib/useEthersFromWagmi";
 
 interface DefiDemoContentProps {
+  isIncognito: boolean;
   onNormalTransaction?: NormalTransactionReporter;
+  onPrivateTransaction?: PrivateTransactionReporter;
 }
 
 export default function DefiDemoContent({
+  isIncognito,
   onNormalTransaction,
+  onPrivateTransaction,
 }: DefiDemoContentProps) {
   const { address } = useAccount();
+  const { provider, signer } = useEthersFromWagmi();
   const [amountIn, setAmountIn] = useState("");
   const [pendingTxType, setPendingTxType] = useState<
     "approval" | "swap" | null
   >(null);
+  const [isPrivatePending, setIsPrivatePending] = useState(false);
   const lastLoggedHashRef = useRef<`0x${string}` | null>(null);
+  const swapInterface = new Interface([
+    "function swap(address tokenIn, uint256 amountIn, address tokenOut)",
+  ]);
+
+  const { deposit, sdk: privacySdk, isReady: isPrivacyReady } = useDeposit({
+    poolAddress: DEMO_CONTRACTS.PrivacyProtocolPool,
+    provider,
+    signer,
+  });
+  const { executeAction } = useExecuteAction({
+    poolAddress: DEMO_CONTRACTS.PrivacyProtocolPool,
+    provider,
+    signer,
+  });
 
   const { data: ppUSDBalance } = useReadContract({
     address: DEMO_CONTRACTS.ppUSD,
@@ -75,9 +105,46 @@ export default function DefiDemoContent({
       ? allowance < parseEther(amountIn || "0")
       : false;
 
-  const isPending = isWritePending || isConfirming;
+  const isPending = isIncognito
+    ? isPrivatePending
+    : isWritePending || isConfirming;
+
+  const logPrivateTransaction = async (
+    hash: string,
+    methodHint: string,
+    parametersHint: string,
+    details: PrivateTransactionDetails | null,
+    metadata?: Record<string, string | undefined>,
+  ) => {
+    if (!onPrivateTransaction) {
+      return;
+    }
+
+    onPrivateTransaction({
+      hash: hash as `0x${string}`,
+      source: "defi",
+      methodHint,
+      parametersHint,
+      privacyLevel: "Private",
+      metadata: {
+        initiator: details?.initiator,
+        gasPayer: details?.gasPayer,
+        method: details?.method,
+        methodId: details?.methodId,
+        parameters: details?.parameters,
+        status: details?.status,
+        to: details?.to,
+        proxyAddress: metadata?.proxyAddress,
+        noteCommitment: metadata?.noteCommitment,
+      },
+    });
+  };
 
   useEffect(() => {
+    if (isIncognito) {
+      return;
+    }
+
     if (!hash || !onNormalTransaction || lastLoggedHashRef.current === hash) {
       return;
     }
@@ -96,9 +163,13 @@ export default function DefiDemoContent({
       privacyLevel: "Public",
     });
     lastLoggedHashRef.current = hash;
-  }, [hash, onNormalTransaction, pendingTxType, amountIn]);
+  }, [isIncognito, hash, onNormalTransaction, pendingTxType, amountIn]);
 
   useEffect(() => {
+    if (isIncognito) {
+      return;
+    }
+
     if (isSuccess && pendingTxType) {
       if (pendingTxType === "approval") {
         toast.success("Approval successful! Initiating swap...");
@@ -127,6 +198,7 @@ export default function DefiDemoContent({
       }, 0);
     }
   }, [
+    isIncognito,
     isSuccess,
     writeError,
     refetchAllowance,
@@ -135,7 +207,7 @@ export default function DefiDemoContent({
     writeContract,
   ]);
 
-  const handleAction = () => {
+  const handleAction = async () => {
     if (!address) {
       toast.error("Please connect your wallet");
       return;
@@ -145,13 +217,109 @@ export default function DefiDemoContent({
       return;
     }
 
+    const parsedAmount = parseEther(amountIn);
+
+    if (isIncognito) {
+      if (!isPrivacyReady || !privacySdk || !signer || !provider) {
+        toast.error("Privacy SDK is not ready. Please reconnect wallet.");
+        return;
+      }
+
+      setIsPrivatePending(true);
+      try {
+        const tokenContract = new Contract(
+          DEMO_CONTRACTS.ppUSD,
+          [
+            "function allowance(address owner, address spender) view returns (uint256)",
+            "function approve(address spender, uint256 amount) returns (bool)",
+          ],
+          signer,
+        );
+
+        const currentAllowance = (await tokenContract.getFunction("allowance")(
+          address,
+          DEMO_CONTRACTS.PrivacyProtocolPool,
+        )) as bigint;
+
+        if (currentAllowance < parsedAmount) {
+          const approvalTx = await tokenContract.getFunction("approve")(
+            DEMO_CONTRACTS.PrivacyProtocolPool,
+            parsedAmount,
+          );
+          await approvalTx.wait();
+        }
+
+        const depositResult = await deposit({
+          token: DEMO_CONTRACTS.ppUSD,
+          amount: parsedAmount,
+          metadata: { source: "defi" },
+        });
+
+        const depositDetails = await privacySdk
+          .getPrivateTransactionDetails(depositResult.txHash)
+          .catch(() => null);
+
+        await logPrivateTransaction(
+          depositResult.txHash,
+          "deposit",
+          `token=${DEMO_CONTRACTS.ppUSD}, amount=${parsedAmount.toString()}`,
+          depositDetails,
+          {
+            noteCommitment: depositResult.commitment,
+          },
+        );
+
+        const callData = swapInterface.encodeFunctionData("swap", [
+          DEMO_CONTRACTS.ppUSD,
+          parsedAmount,
+          DEMO_CONTRACTS.USDTpp,
+        ]);
+
+        const executeResult = await executeAction({
+          token: DEMO_CONTRACTS.ppUSD,
+          amount: parsedAmount,
+          target: DEMO_CONTRACTS.DemoDefi,
+          data: callData,
+          amountInPool: parsedAmount,
+          secret: depositResult.secret,
+          nullifier: depositResult.nullifier,
+        });
+
+        const executeDetails = await privacySdk
+          .getPrivateTransactionDetails(executeResult.txHash)
+          .catch(() => null);
+
+        await logPrivateTransaction(
+          executeResult.txHash,
+          "executeAction(swap)",
+          `amountIn=${amountIn}, tokenIn=ppUSD, tokenOut=USDTpp`,
+          executeDetails,
+          {
+            proxyAddress: executeResult.proxyAddress,
+            noteCommitment: executeResult.newCommitment,
+          },
+        );
+
+        toast.success("Private swap successful!");
+        setAmountIn("");
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Private swap failed";
+        toast.error(`Private swap failed: ${message}`);
+      } finally {
+        setIsPrivatePending(false);
+      }
+
+      return;
+    }
+
     if (needsApproval) {
       setPendingTxType("approval");
       writeContract({
         address: DEMO_CONTRACTS.ppUSD,
         abi: ERC20_ABI,
         functionName: "approve",
-        args: [DEMO_CONTRACTS.DemoDefi, parseEther(amountIn)],
+        args: [DEMO_CONTRACTS.DemoDefi, parsedAmount],
       });
     } else {
       setPendingTxType("swap");
@@ -159,7 +327,7 @@ export default function DefiDemoContent({
         address: DEMO_CONTRACTS.DemoDefi,
         abi: DEMO_DEFI_ABI,
         functionName: "swap",
-        args: [parseEther(amountIn)],
+        args: [parsedAmount],
       });
     }
   };
@@ -248,7 +416,16 @@ export default function DefiDemoContent({
             onClick={handleAction}
             disabled={isPending || !address || !amountIn}
           >
-            {isPending ? (
+            {isIncognito ? (
+              isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting private swap...
+                </>
+              ) : (
+                "Swap Privately"
+              )
+            ) : isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 {needsApproval ? "Approving..." : "Swapping..."}

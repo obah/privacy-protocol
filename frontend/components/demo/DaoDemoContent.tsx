@@ -20,10 +20,20 @@ import {
   useWaitForTransactionReceipt,
 } from "wagmi";
 import { DEMO_CONTRACTS, DEMO_DAO_ABI, ERC20_ABI } from "@/lib/demo-config";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { formatEther } from "viem";
-import type { NormalTransactionReporter } from "./transaction-log-types";
+import { formatEther, parseEther } from "viem";
+import type {
+  NormalTransactionReporter,
+  PrivateTransactionReporter,
+} from "./transaction-log-types";
+import { Contract, Interface } from "ethers";
+import {
+  useDeposit,
+  useExecuteAction,
+} from "privacy-protocol/hooks";
+import type { PrivateTransactionDetails } from "privacy-protocol/core";
+import { useEthersFromWagmi } from "@/lib/useEthersFromWagmi";
 
 type ProposalStatus = "Active" | "Passed" | "Failed" | "Executed" | "Closed";
 
@@ -36,11 +46,15 @@ const statusMap: Record<number, ProposalStatus> = {
 };
 
 interface DaoDemoContentProps {
+  isIncognito: boolean;
   onNormalTransaction?: NormalTransactionReporter;
+  onPrivateTransaction?: PrivateTransactionReporter;
 }
 
 export default function DaoDemoContent({
+  isIncognito,
   onNormalTransaction,
+  onPrivateTransaction,
 }: DaoDemoContentProps) {
   const { data: proposalCount } = useReadContract({
     address: DEMO_CONTRACTS.DemoDao,
@@ -57,7 +71,9 @@ export default function DaoDemoContent({
             <ProposalCard
               key={i + 1}
               id={i + 1}
+              isIncognito={isIncognito}
               onNormalTransaction={onNormalTransaction}
+              onPrivateTransaction={onPrivateTransaction}
             />
           ))
         ) : (
@@ -83,11 +99,38 @@ export default function DaoDemoContent({
 
 interface ProposalCardProps {
   id: number;
+  isIncognito: boolean;
   onNormalTransaction?: NormalTransactionReporter;
+  onPrivateTransaction?: PrivateTransactionReporter;
 }
 
-function ProposalCard({ id, onNormalTransaction }: ProposalCardProps) {
+function ProposalCard({
+  id,
+  isIncognito,
+  onNormalTransaction,
+  onPrivateTransaction,
+}: ProposalCardProps) {
   const { address } = useAccount();
+  const { provider, signer } = useEthersFromWagmi();
+  const [isPrivatePending, setIsPrivatePending] = useState(false);
+  const voteInterface = useMemo(
+    () => new Interface(["function vote(uint256 proposalId, uint8 support)"]),
+    [],
+  );
+  const PRIVATE_VOTE_AMOUNT = useMemo(() => parseEther("10"), []);
+
+  const { deposit, sdk: privacySdk, isReady: isPrivacyReady } = useDeposit({
+    poolAddress: DEMO_CONTRACTS.PrivacyProtocolPool,
+    provider,
+    signer,
+  });
+
+  const { executeAction } = useExecuteAction({
+    poolAddress: DEMO_CONTRACTS.PrivacyProtocolPool,
+    provider,
+    signer,
+  });
+
   const { data: proposalData, refetch: refetchProposalData } = useReadContract({
     address: DEMO_CONTRACTS.DemoDao,
     abi: DEMO_DAO_ABI,
@@ -127,9 +170,79 @@ function ProposalCard({ id, onNormalTransaction }: ProposalCardProps) {
     null,
   );
   const lastLoggedHashRef = useRef<`0x${string}` | null>(null);
-  const isPending = isWritePending || isConfirming;
+  const isPending = isIncognito
+    ? isPrivatePending
+    : isWritePending || isConfirming;
+
+  const logPrivateTransaction = useCallback(
+    (
+      hash: string,
+      methodHint: string,
+      parametersHint: string,
+      details: PrivateTransactionDetails | null,
+      metadata?: Record<string, string | undefined>,
+    ) => {
+      if (!onPrivateTransaction) {
+        return;
+      }
+
+      onPrivateTransaction({
+        hash: hash as `0x${string}`,
+        source: "dao",
+        methodHint,
+        parametersHint,
+        privacyLevel: "Private",
+        metadata: {
+          initiator: details?.initiator,
+          gasPayer: details?.gasPayer,
+          method: details?.method,
+          methodId: details?.methodId,
+          parameters: details?.parameters,
+          status: details?.status,
+          to: details?.to,
+          proxyAddress: metadata?.proxyAddress,
+          noteCommitment: metadata?.noteCommitment,
+        },
+      });
+    },
+    [onPrivateTransaction],
+  );
+
+  const ensurePoolApproval = useCallback(async () => {
+    if (!signer || !address) {
+      throw new Error("Wallet not connected");
+    }
+
+    const tokenContract = new Contract(
+      DEMO_CONTRACTS.ppUSD,
+      [
+        "function allowance(address owner, address spender) view returns (uint256)",
+        "function approve(address spender, uint256 amount) returns (bool)",
+      ],
+      signer,
+    );
+
+    const allowance = (await tokenContract.getFunction("allowance")(
+      address,
+      DEMO_CONTRACTS.PrivacyProtocolPool,
+    )) as bigint;
+
+    if (allowance >= PRIVATE_VOTE_AMOUNT) {
+      return;
+    }
+
+    const approveTx = await tokenContract.getFunction("approve")(
+      DEMO_CONTRACTS.PrivacyProtocolPool,
+      PRIVATE_VOTE_AMOUNT,
+    );
+    await approveTx.wait();
+  }, [signer, address, PRIVATE_VOTE_AMOUNT]);
 
   useEffect(() => {
+    if (isIncognito) {
+      return;
+    }
+
     if (isSuccess) {
       toast.success("Vote cast successfully!");
       refetchProposalData();
@@ -138,9 +251,13 @@ function ProposalCard({ id, onNormalTransaction }: ProposalCardProps) {
     if (writeError) {
       toast.error(`Vote failed: ${writeError.message}`);
     }
-  }, [isSuccess, writeError, refetchProposalData, refetchVoteData]);
+  }, [isIncognito, isSuccess, writeError, refetchProposalData, refetchVoteData]);
 
   useEffect(() => {
+    if (isIncognito) {
+      return;
+    }
+
     if (!hash || !onNormalTransaction || lastLoggedHashRef.current === hash) {
       return;
     }
@@ -153,11 +270,86 @@ function ProposalCard({ id, onNormalTransaction }: ProposalCardProps) {
       privacyLevel: "Public",
     });
     lastLoggedHashRef.current = hash;
-  }, [hash, id, onNormalTransaction, pendingVoteSupport]);
+  }, [isIncognito, hash, id, onNormalTransaction, pendingVoteSupport]);
 
-  const handleVote = (support: number) => {
+  const handleVote = async (support: number) => {
     if (!address) {
       toast.error("Please connect your wallet");
+      return;
+    }
+
+    if (isIncognito) {
+      if (!isPrivacyReady || !privacySdk) {
+        toast.error("Privacy SDK is not ready. Please reconnect wallet.");
+        return;
+      }
+
+      setPendingVoteSupport(support);
+      setIsPrivatePending(true);
+
+      try {
+        await ensurePoolApproval();
+
+        const depositResult = await deposit({
+          token: DEMO_CONTRACTS.ppUSD,
+          amount: PRIVATE_VOTE_AMOUNT,
+          metadata: { source: "dao", proposalId: id, support },
+        });
+
+        const depositDetails = await privacySdk
+          .getPrivateTransactionDetails(depositResult.txHash)
+          .catch(() => null);
+
+        logPrivateTransaction(
+          depositResult.txHash,
+          "deposit",
+          `token=${DEMO_CONTRACTS.ppUSD}, amount=${PRIVATE_VOTE_AMOUNT.toString()}`,
+          depositDetails,
+          {
+            noteCommitment: depositResult.commitment,
+          },
+        );
+
+        const callData = voteInterface.encodeFunctionData("vote", [
+          BigInt(id),
+          support,
+        ]);
+
+        const executeResult = await executeAction({
+          token: DEMO_CONTRACTS.ppUSD,
+          amount: PRIVATE_VOTE_AMOUNT,
+          target: DEMO_CONTRACTS.DemoDao,
+          data: callData,
+          amountInPool: PRIVATE_VOTE_AMOUNT,
+          secret: depositResult.secret,
+          nullifier: depositResult.nullifier,
+        });
+
+        const executeDetails = await privacySdk
+          .getPrivateTransactionDetails(executeResult.txHash)
+          .catch(() => null);
+
+        logPrivateTransaction(
+          executeResult.txHash,
+          "executeAction(vote)",
+          `proposalId=${id}, support=${support}`,
+          executeDetails,
+          {
+            proxyAddress: executeResult.proxyAddress,
+            noteCommitment: executeResult.newCommitment,
+          },
+        );
+
+        toast.success("Private vote cast successfully!");
+        void refetchProposalData();
+        void refetchVoteData();
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Private vote failed";
+        toast.error(`Private vote failed: ${message}`);
+      } finally {
+        setIsPrivatePending(false);
+      }
       return;
     }
 

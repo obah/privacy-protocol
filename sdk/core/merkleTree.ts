@@ -1,12 +1,35 @@
-import { Barretenberg, Fr } from "@aztec/bb.js";
+import type { Barretenberg, Fr } from "@aztec/bb.js";
+import { loadBb } from "./bb";
 
 let bbInstance: Barretenberg | undefined;
+let frClass: typeof Fr | undefined;
+
+async function getFrClass(): Promise<typeof Fr> {
+  if (!frClass) {
+    const bbModule = await loadBb();
+    frClass = bbModule.Fr;
+  }
+
+  return frClass;
+}
 
 async function getBb(): Promise<Barretenberg> {
   if (!bbInstance) {
-    bbInstance = await Barretenberg.new();
+    const bbModule = await loadBb();
+    const BarretenbergCtor = bbModule.Barretenberg;
+
+    bbInstance = await BarretenbergCtor.new();
   }
   return bbInstance;
+}
+
+async function toFr(value: string | Fr): Promise<Fr> {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const FrCtor = await getFrClass();
+  return FrCtor.fromString(value);
 }
 
 async function hashLeftRight(
@@ -14,8 +37,8 @@ async function hashLeftRight(
   right: string | Fr,
 ): Promise<string> {
   const bb = await getBb();
-  const frLeft = typeof left === "string" ? Fr.fromString(left) : left;
-  const frRight = typeof right === "string" ? Fr.fromString(right) : right;
+  const frLeft = await toFr(left);
+  const frRight = await toFr(right);
   const hash = await bb.poseidon2Hash([frLeft, frRight]);
   return hash.toString();
 }

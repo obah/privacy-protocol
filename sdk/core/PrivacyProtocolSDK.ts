@@ -1,7 +1,8 @@
 import { ethers, Contract, Signer, Provider } from "ethers";
 import { Noir } from "@noir-lang/noir_js";
-import { UltraHonkBackend, Fr } from "@aztec/bb.js";
+import { loadBb } from "./bb";
 import { merkleTree } from "./merkleTree";
+import bundledCircuit from "./circuits.json";
 import {
   generateCommitment,
   computeNullifierHash,
@@ -49,6 +50,8 @@ export interface PrivateTransactionDetails {
   to: string | null;
 }
 
+export const DEFAULT_PRIVACY_PROTOCOL_CIRCUIT = bundledCircuit;
+
 const PRIVACY_PROTOCOL_POOL_ABI = [
   "function deposit(address token, uint256 amount, bytes32 commitment) external",
   "function withdraw(address token, address recipient, uint256 amount, bytes32 nullifierHash, bytes calldata proof, bytes32 rootHash, bytes32 calldataHash, bytes32 newCommitment) external",
@@ -64,7 +67,11 @@ export class PrivacyProtocolSDK {
   circuit: any;
   contract: Contract;
 
-  constructor(provider: Provider, contractAddress: string, circuit: any) {
+  constructor(
+    provider: Provider,
+    contractAddress: string,
+    circuit: any = DEFAULT_PRIVACY_PROTOCOL_CIRCUIT,
+  ) {
     this.provider = provider;
     this.contractAddress = contractAddress;
     this.circuit = circuit;
@@ -276,6 +283,10 @@ export class PrivacyProtocolSDK {
     dataHash: string,
     leaves: string[],
   ) {
+    const bbModule = await loadBb();
+    const Fr = bbModule.Fr;
+    const UltraHonkBackend = bbModule.UltraHonkBackend;
+
     const amountLeft = BigInt(amountInPool) - BigInt(amountToWithdraw);
 
     const commitment = await computeCommitment(nullifier, secret, amountInPool);
