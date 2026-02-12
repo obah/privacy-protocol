@@ -144,7 +144,7 @@ mod tests {
             })
         }
 
-        async fn submit_batch(&self, _batch: &[PendingRelayItem]) -> Result<TxHash> {
+        async fn submit_item(&self, _item: &PendingRelayItem) -> Result<TxHash> {
             let mut guard = self.submit_count.lock().await;
             *guard += 1;
             Ok(TxHash::from_low_u64_be(1))

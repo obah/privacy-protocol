@@ -1,25 +1,64 @@
-use crate::{config::RelayerConfig, models::PendingRelayItem};
+use crate::{
+    config::RelayerConfig,
+    models::{PendingRelayItem, RelayOperation},
+};
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use ethers::{
-    contract::{abigen, ContractError},
+    abi::{Abi, Detokenize},
+    contract::{builders::ContractCall, Contract, ContractError},
     middleware::SignerMiddleware,
     providers::{Http, Middleware, Provider},
     signers::{LocalWallet, Signer},
-    types::{Address, Bytes, TxHash, U256},
+    types::{Address, TxHash, U256},
 };
 use std::{str::FromStr, sync::Arc, time::Duration};
 use tokio::{sync::Mutex, time::sleep};
 use tracing::{debug, warn};
 
-abigen!(
-    FanPool,
-    r#"[
-        function executeBatch(bytes[] proofs, bytes32[][] publicInputs) external
-    ]"#
-);
-
 type WalletClient = SignerMiddleware<Provider<Http>, LocalWallet>;
+
+const FAN_POOL_ABI_JSON: &str = r#"[
+  {
+    "type": "function",
+    "name": "withdraw",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      { "name": "token", "type": "address" },
+      { "name": "recipient", "type": "address" },
+      { "name": "amount", "type": "uint256" },
+      { "name": "nullifierHash", "type": "bytes32" },
+      { "name": "proof", "type": "bytes" },
+      { "name": "rootHash", "type": "bytes32" },
+      { "name": "calldataHash", "type": "bytes32" },
+      { "name": "newCommitment", "type": "bytes32" }
+    ],
+    "outputs": []
+  },
+  {
+    "type": "function",
+    "name": "executeAction",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      {
+        "name": "request",
+        "type": "tuple",
+        "components": [
+          { "name": "token", "type": "address" },
+          { "name": "amount", "type": "uint256" },
+          { "name": "target", "type": "address" },
+          { "name": "data", "type": "bytes" },
+          { "name": "actionId", "type": "bytes32" },
+          { "name": "nullifierHash", "type": "bytes32" },
+          { "name": "proof", "type": "bytes" },
+          { "name": "rootHash", "type": "bytes32" },
+          { "name": "newCommitment", "type": "bytes32" }
+        ]
+      }
+    ],
+    "outputs": [{ "name": "success", "type": "bool" }]
+  }
+]"#;
 
 #[derive(Debug, Clone)]
 pub struct FeeEstimate {
@@ -31,7 +70,7 @@ pub struct FeeEstimate {
 pub struct ChainService {
     config: Arc<RelayerConfig>,
     client: Arc<WalletClient>,
-    contract: FanPool<WalletClient>,
+    contract: Contract<WalletClient>,
     relayer_address: Address,
     nonce: Mutex<Option<U256>>,
 }
@@ -40,7 +79,7 @@ pub struct ChainService {
 pub trait ChainClient: Send + Sync {
     fn relayer_address(&self) -> Address;
     async fn estimate_single_request_fee(&self, item: &PendingRelayItem) -> Result<FeeEstimate>;
-    async fn submit_batch(&self, batch: &[PendingRelayItem]) -> Result<TxHash>;
+    async fn submit_item(&self, item: &PendingRelayItem) -> Result<TxHash>;
 }
 
 impl ChainService {
@@ -61,7 +100,8 @@ impl ChainService {
         let relayer_address = wallet.address();
 
         let client = Arc::new(SignerMiddleware::new(provider, wallet));
-        let contract = FanPool::new(config.fan_pool_address, client.clone());
+        let abi: Abi = serde_json::from_str(FAN_POOL_ABI_JSON).context("failed to parse pool ABI")?;
+        let contract = Contract::new(config.fan_pool_address, abi, client.clone());
 
         Ok(Self {
             config,
@@ -80,14 +120,49 @@ impl ChainService {
         &self,
         item: &PendingRelayItem,
     ) -> Result<FeeEstimate> {
-        let proofs = vec![item.proof.clone()];
-        let public_inputs = vec![item.public_inputs.clone()];
+        let operation = item.operation().context("invalid relay metadata")?;
 
-        let call = self.contract.execute_batch(proofs, public_inputs);
-        let gas_estimate = call
-            .estimate_gas()
-            .await
-            .context("failed to estimate gas for relay request")?;
+        let gas_estimate = match operation {
+            RelayOperation::Withdraw(op) => self
+                .contract
+                .method::<_, ()>(
+                    "withdraw",
+                    (
+                        op.token,
+                        op.recipient,
+                        op.amount,
+                        op.nullifier_hash,
+                        item.proof.clone(),
+                        op.root_hash,
+                        op.calldata_hash,
+                        op.new_commitment,
+                    ),
+                )
+                .context("failed to build withdraw call")?
+                .estimate_gas()
+                .await
+                .context("failed to estimate gas for relay request")?,
+            RelayOperation::ExecuteAction(op) => {
+                let request = (
+                    op.token,
+                    op.amount,
+                    op.target,
+                    op.data,
+                    op.action_id,
+                    op.nullifier_hash,
+                    item.proof.clone(),
+                    op.root_hash,
+                    op.new_commitment,
+                );
+                self.contract
+                    .method::<_, bool>("executeAction", (request,))
+                    .context("failed to build executeAction call")?
+                    .estimate_gas()
+                    .await
+                    .context("failed to estimate gas for relay request")?
+            }
+        };
+
         let gas_price = self
             .client
             .get_gas_price()
@@ -108,24 +183,70 @@ impl ChainService {
         })
     }
 
-    pub async fn submit_batch(&self, batch: &[PendingRelayItem]) -> Result<TxHash> {
-        if batch.is_empty() {
-            return Err(anyhow!("cannot submit empty batch"));
+    pub async fn submit_item(&self, item: &PendingRelayItem) -> Result<TxHash> {
+        let operation = item.operation().context("invalid relay metadata")?;
+
+        match operation {
+            RelayOperation::Withdraw(op) => {
+                let proof = item.proof.clone();
+                self.send_with_retry(
+                    |nonce| {
+                        self.contract
+                            .method::<_, ()>(
+                                "withdraw",
+                                (
+                                    op.token,
+                                    op.recipient,
+                                    op.amount,
+                                    op.nullifier_hash,
+                                    proof.clone(),
+                                    op.root_hash,
+                                    op.calldata_hash,
+                                    op.new_commitment,
+                                ),
+                            )
+                            .context("failed to build withdraw call")
+                            .map(|call| call.nonce(nonce))
+                    },
+                    "withdraw",
+                )
+                .await
+            }
+            RelayOperation::ExecuteAction(op) => {
+                let proof = item.proof.clone();
+                self.send_with_retry(
+                    |nonce| {
+                        let request = (
+                            op.token,
+                            op.amount,
+                            op.target,
+                            op.data.clone(),
+                            op.action_id,
+                            op.nullifier_hash,
+                            proof.clone(),
+                            op.root_hash,
+                            op.new_commitment,
+                        );
+                        self.contract
+                            .method::<_, bool>("executeAction", (request,))
+                            .context("failed to build executeAction call")
+                            .map(|call| call.nonce(nonce))
+                    },
+                    "executeAction",
+                )
+                .await
+            }
         }
+    }
 
-        let proofs: Vec<Bytes> = batch.iter().map(|item| item.proof.clone()).collect();
-        let public_inputs: Vec<Vec<[u8; 32]>> = batch
-            .iter()
-            .map(|item| item.public_inputs.clone())
-            .collect();
-
-        // TODO: route this through Flashbots bundle API when private mempool support is added.
+    async fn send_with_retry<T, F>(&self, build_call: F, operation: &str) -> Result<TxHash>
+    where
+        T: Detokenize,
+        F: Fn(U256) -> Result<ContractCall<WalletClient, T>>,
+    {
         for attempt in 1..=self.config.retry_max_attempts {
             let nonce = self.next_nonce().await?;
-            let mut call = self
-                .contract
-                .execute_batch(proofs.clone(), public_inputs.clone())
-                .nonce(nonce);
+            let mut call = build_call(nonce)?;
 
             match call.estimate_gas().await {
                 Ok(estimate) => {
@@ -134,7 +255,7 @@ impl ChainService {
                 }
                 Err(error) => {
                     if self.is_nonce_too_low_error(&error) {
-                        warn!("nonce too low during gas estimate; refreshing nonce");
+                        warn!(operation, "nonce too low during gas estimate; refreshing nonce");
                         self.reset_nonce().await?;
                         continue;
                     }
@@ -144,7 +265,8 @@ impl ChainService {
                         continue;
                     }
 
-                    return Err(anyhow!(error).context("failed to estimate batch gas"));
+                    return Err(anyhow!(error)
+                        .context(format!("failed to estimate {operation} relay transaction gas")));
                 }
             }
 
@@ -154,33 +276,30 @@ impl ChainService {
                     let tx_hash = pending_tx.tx_hash();
                     drop(pending_tx);
                     self.mark_nonce_used(nonce).await;
-                    debug!(
-                        tx_hash = %tx_hash,
-                        batch_size = batch.len(),
-                        "submitted relay batch to chain"
-                    );
+                    debug!(tx_hash = %tx_hash, operation, "submitted relay transaction to chain");
                     return Ok(tx_hash);
                 }
                 Err(error) => {
                     if self.is_nonce_too_low_error(&error) {
-                        warn!("nonce error on send; refreshing nonce and retrying");
+                        warn!(operation, "nonce error on send; refreshing nonce and retrying");
                         self.reset_nonce().await?;
                         continue;
                     }
 
                     if self.is_retryable_error(&error) && attempt < self.config.retry_max_attempts {
-                        warn!(attempt, "retryable RPC error while sending batch: {error}");
+                        warn!(attempt, operation, "retryable RPC error while sending relay transaction: {error}");
                         self.backoff(attempt).await;
                         continue;
                     }
 
-                    return Err(anyhow!(error).context("failed to send relay batch"));
+                    return Err(anyhow!(error)
+                        .context(format!("failed to send {operation} relay transaction")));
                 }
             }
         }
 
         Err(anyhow!(
-            "batch submission exhausted all {} attempts",
+            "relay transaction exhausted all {} attempts",
             self.config.retry_max_attempts
         ))
     }
@@ -257,7 +376,7 @@ impl ChainClient for ChainService {
         ChainService::estimate_single_request_fee(self, item).await
     }
 
-    async fn submit_batch(&self, batch: &[PendingRelayItem]) -> Result<TxHash> {
-        ChainService::submit_batch(self, batch).await
+    async fn submit_item(&self, item: &PendingRelayItem) -> Result<TxHash> {
+        ChainService::submit_item(self, item).await
     }
 }

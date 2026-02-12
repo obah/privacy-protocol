@@ -236,9 +236,7 @@ function NormalTransactionCard({ log }: { log: NormalTransactionLog }) {
 }
 
 function PrivateTransactionCard({ log }: { log: PrivateTransactionLog }) {
-  const onchainHash = log.hash.startsWith("0x")
-    ? (log.hash as Hex)
-    : undefined;
+  const onchainHash = log.hash.startsWith("0x") ? (log.hash as Hex) : undefined;
   const { data: transaction } = useTransaction({
     hash: onchainHash,
     query: { enabled: Boolean(onchainHash) },
@@ -248,8 +246,10 @@ function PrivateTransactionCard({ log }: { log: PrivateTransactionLog }) {
     query: { enabled: Boolean(onchainHash) },
   });
 
-  const txSenderRaw = log.metadata?.initiator ?? transaction?.from ?? "pending...";
-  const gasPayerRaw = log.metadata?.gasPayer ?? transaction?.from ?? "pending...";
+  const txSenderRaw =
+    log.metadata?.initiator ?? transaction?.from ?? "pending...";
+  const gasPayerRaw =
+    log.metadata?.gasPayer ?? transaction?.from ?? "pending...";
   const targetCallerRaw = log.metadata?.proxyAddress;
   const method =
     log.metadata?.method ??
@@ -297,7 +297,9 @@ function PrivateTransactionCard({ log }: { log: PrivateTransactionLog }) {
         {log.metadata?.noteCommitment ? (
           <LogRow label="Commitment" value={log.metadata.noteCommitment} />
         ) : null}
-        {relayRequestId ? <LogRow label="Relay req" value={relayRequestId} /> : null}
+        {relayRequestId ? (
+          <LogRow label="Relay req" value={relayRequestId} />
+        ) : null}
         {relayQueueLength !== undefined ? (
           <LogRow label="Relay queue" value={relayQueueLength.toString()} />
         ) : null}
@@ -521,6 +523,7 @@ export default function DemoPage() {
                 </p>
               </div>
               <p className="mb-2 text-xs text-sky-800/80 dark:text-sky-200/70">
+                Perform a vote or swap in incognito mode to see its logs here.
                 Private actions are submitted to the relayer and later batched
                 on-chain. The relayer pays gas, and target contracts see the
                 privacy proxy as caller.

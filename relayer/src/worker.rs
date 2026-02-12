@@ -53,36 +53,45 @@ pub async fn run_batch_worker(state: AppState, shutdown: CancellationToken) {
             continue;
         }
 
-        match state.chain.submit_batch(&batch).await {
-            Ok(tx_hash) => {
-                let mut mempool = state.mempool.write().await;
-                if let Err(error) = mempool.acknowledge_batch(batch.len()) {
-                    error!(
+        let mut hit_failure = false;
+        for item in &batch {
+            match state.chain.submit_item(item).await {
+                Ok(tx_hash) => {
+                    let mut mempool = state.mempool.write().await;
+                    if let Err(error) = mempool.acknowledge_batch(1) {
+                        error!(
+                            tx_hash = %tx_hash,
+                            request_id = %item.id,
+                            error = %error,
+                            "item submitted but failed to persist mempool ack"
+                        );
+                        hit_failure = true;
+                        break;
+                    }
+
+                    info!(
                         tx_hash = %tx_hash,
-                        error = %error,
-                        "batch submitted but failed to persist mempool ack"
+                        request_id = %item.id,
+                        queue_len = mempool.len(),
+                        "relay request submitted successfully"
                     );
-                    continue;
                 }
-
-                info!(
-                    tx_hash = %tx_hash,
-                    batch_size = batch.len(),
-                    queue_len = mempool.len(),
-                    "relay batch submitted successfully"
-                );
+                Err(error) => {
+                    warn!(
+                        request_id = %item.id,
+                        error = %error,
+                        "relay request submission failed; item left in queue"
+                    );
+                    hit_failure = true;
+                    break;
+                }
             }
-            Err(error) => {
-                warn!(
-                    error = %error,
-                    batch_size = batch.len(),
-                    "relay batch submission failed; batch left in queue"
-                );
+        }
 
-                tokio::select! {
-                    _ = shutdown.cancelled() => break,
-                    _ = sleep(Duration::from_secs(SUBMIT_FAILURE_SLEEP_SECS)) => {}
-                }
+        if hit_failure {
+            tokio::select! {
+                _ = shutdown.cancelled() => break,
+                _ = sleep(Duration::from_secs(SUBMIT_FAILURE_SLEEP_SECS)) => {}
             }
         }
     }
@@ -114,12 +123,12 @@ mod tests {
 
     struct MockChain {
         relayer: Address,
-        submitted_batch_sizes: Mutex<Vec<usize>>,
+        submitted_request_ids: Mutex<Vec<[u8; 32]>>,
     }
 
     impl MockChain {
         async fn submit_count(&self) -> usize {
-            self.submitted_batch_sizes.lock().await.len()
+            self.submitted_request_ids.lock().await.len()
         }
     }
 
@@ -140,8 +149,13 @@ mod tests {
             })
         }
 
-        async fn submit_batch(&self, batch: &[PendingRelayItem]) -> Result<TxHash> {
-            self.submitted_batch_sizes.lock().await.push(batch.len());
+        async fn submit_item(&self, item: &PendingRelayItem) -> Result<TxHash> {
+            let hash_bytes = item
+                .public_inputs
+                .first()
+                .copied()
+                .unwrap_or([0u8; 32]);
+            self.submitted_request_ids.lock().await.push(hash_bytes);
             Ok(TxHash::from_low_u64_be(11))
         }
     }
@@ -195,7 +209,7 @@ mod tests {
             RelayMempool::load_or_create(config.mempool_path.clone()).expect("mempool init");
         let chain_impl = Arc::new(MockChain {
             relayer,
-            submitted_batch_sizes: Mutex::new(Vec::new()),
+            submitted_request_ids: Mutex::new(Vec::new()),
         });
         let chain: Arc<dyn ChainClient> = chain_impl.clone();
 

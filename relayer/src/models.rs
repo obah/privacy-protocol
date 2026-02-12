@@ -6,6 +6,7 @@ use ethers::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::str::FromStr;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -23,6 +24,7 @@ pub struct PendingRelayItem {
     pub public_inputs: Vec<[u8; 32]>,
     pub relayer_fee_wei: U256,
     pub received_at: DateTime<Utc>,
+    pub metadata: Option<Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -32,6 +34,37 @@ pub struct StoredPendingRelayItem {
     pub public_inputs: Vec<String>,
     pub relayer_fee_wei: String,
     pub received_at: DateTime<Utc>,
+    #[serde(default)]
+    pub metadata: Option<Value>,
+}
+
+#[derive(Debug, Clone)]
+pub struct WithdrawOperation {
+    pub token: Address,
+    pub recipient: Address,
+    pub amount: U256,
+    pub nullifier_hash: [u8; 32],
+    pub root_hash: [u8; 32],
+    pub new_commitment: [u8; 32],
+    pub calldata_hash: [u8; 32],
+}
+
+#[derive(Debug, Clone)]
+pub struct ExecuteActionOperation {
+    pub token: Address,
+    pub amount: U256,
+    pub target: Address,
+    pub data: Bytes,
+    pub action_id: [u8; 32],
+    pub nullifier_hash: [u8; 32],
+    pub root_hash: [u8; 32],
+    pub new_commitment: [u8; 32],
+}
+
+#[derive(Debug, Clone)]
+pub enum RelayOperation {
+    Withdraw(WithdrawOperation),
+    ExecuteAction(ExecuteActionOperation),
 }
 
 #[derive(Debug, Serialize)]
@@ -79,6 +112,7 @@ impl RelayRequest {
             public_inputs,
             relayer_fee_wei,
             received_at: now,
+            metadata: self.metadata,
         })
     }
 }
@@ -95,6 +129,7 @@ impl From<&PendingRelayItem> for StoredPendingRelayItem {
                 .collect(),
             relayer_fee_wei: value.relayer_fee_wei.to_string(),
             received_at: value.received_at,
+            metadata: value.metadata.clone(),
         }
     }
 }
@@ -120,7 +155,70 @@ impl TryFrom<StoredPendingRelayItem> for PendingRelayItem {
             public_inputs,
             relayer_fee_wei,
             received_at: value.received_at,
+            metadata: value.metadata,
         })
+    }
+}
+
+impl PendingRelayItem {
+    pub fn operation(&self) -> Result<RelayOperation> {
+        let metadata = self
+            .metadata
+            .as_ref()
+            .ok_or_else(|| anyhow!("missing relay metadata"))?;
+
+        let operation = metadata
+            .get("operation")
+            .and_then(Value::as_str)
+            .ok_or_else(|| anyhow!("metadata.operation is required"))?;
+
+        match operation {
+            "withdraw" => {
+                let token = parse_address(metadata, "token")?;
+                let recipient = parse_address(metadata, "recipient")?;
+                let amount = parse_u256(metadata, "amount")?;
+                let nullifier_hash = parse_bytes32(metadata, "nullifierHash")?;
+                let root_hash = parse_bytes32(metadata, "rootHash")?;
+                let new_commitment = parse_bytes32(metadata, "newCommitment")?;
+                let calldata_hash = metadata
+                    .get("calldataHash")
+                    .map(|_| parse_bytes32(metadata, "calldataHash"))
+                    .transpose()?
+                    .unwrap_or([0u8; 32]);
+
+                Ok(RelayOperation::Withdraw(WithdrawOperation {
+                    token,
+                    recipient,
+                    amount,
+                    nullifier_hash,
+                    root_hash,
+                    new_commitment,
+                    calldata_hash,
+                }))
+            }
+            "executeAction" => {
+                let token = parse_address(metadata, "token")?;
+                let amount = parse_u256(metadata, "amount")?;
+                let target = parse_address(metadata, "target")?;
+                let data = parse_bytes(metadata, "data")?;
+                let action_id = parse_bytes32(metadata, "actionId")?;
+                let nullifier_hash = parse_bytes32(metadata, "nullifierHash")?;
+                let root_hash = parse_bytes32(metadata, "rootHash")?;
+                let new_commitment = parse_bytes32(metadata, "newCommitment")?;
+
+                Ok(RelayOperation::ExecuteAction(ExecuteActionOperation {
+                    token,
+                    amount,
+                    target,
+                    data,
+                    action_id,
+                    nullifier_hash,
+                    root_hash,
+                    new_commitment,
+                }))
+            }
+            other => Err(anyhow!("unsupported metadata.operation: {other}")),
+        }
     }
 }
 
@@ -166,4 +264,55 @@ fn decode_hex(input: &str) -> Result<Vec<u8>> {
     }
     let decoded = hex::decode(normalized).with_context(|| format!("invalid hex: {input}"))?;
     Ok(decoded)
+}
+
+fn parse_address(metadata: &Value, field: &str) -> Result<Address> {
+    let raw = metadata
+        .get(field)
+        .and_then(Value::as_str)
+        .ok_or_else(|| anyhow!("metadata.{field} is required"))?;
+    Address::from_str(raw).with_context(|| format!("failed to parse metadata.{field} as address"))
+}
+
+fn parse_bytes32(metadata: &Value, field: &str) -> Result<[u8; 32]> {
+    let raw = metadata
+        .get(field)
+        .and_then(Value::as_str)
+        .ok_or_else(|| anyhow!("metadata.{field} is required"))?;
+    parse_hex_to_bytes32(raw).with_context(|| format!("failed to parse metadata.{field}"))
+}
+
+fn parse_bytes(metadata: &Value, field: &str) -> Result<Bytes> {
+    let raw = metadata
+        .get(field)
+        .and_then(Value::as_str)
+        .ok_or_else(|| anyhow!("metadata.{field} is required"))?;
+    parse_hex_to_bytes(raw).with_context(|| format!("failed to parse metadata.{field}"))
+}
+
+fn parse_u256(metadata: &Value, field: &str) -> Result<U256> {
+    let value = metadata
+        .get(field)
+        .ok_or_else(|| anyhow!("metadata.{field} is required"))?;
+
+    match value {
+        Value::String(raw) => parse_u256_string(raw)
+            .with_context(|| format!("failed to parse metadata.{field} as uint256")),
+        Value::Number(raw) => {
+            let as_u64 = raw
+                .as_u64()
+                .ok_or_else(|| anyhow!("metadata.{field} number is not a u64"))?;
+            Ok(U256::from(as_u64))
+        }
+        _ => Err(anyhow!("metadata.{field} must be string or number")),
+    }
+}
+
+fn parse_u256_string(raw: &str) -> Result<U256> {
+    if raw.starts_with("0x") || raw.starts_with("0X") {
+        U256::from_str_radix(raw.trim_start_matches("0x").trim_start_matches("0X"), 16)
+            .context("invalid hex uint256")
+    } else {
+        U256::from_dec_str(raw).context("invalid decimal uint256")
+    }
 }

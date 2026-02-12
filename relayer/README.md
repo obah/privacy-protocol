@@ -1,6 +1,6 @@
 # Privacy Protocol Relayer (Rust)
 
-High-performance relayer service for Privacy Protocol. It accepts proof payloads over HTTP, validates anti-theft and fee constraints, batches requests, and submits `executeBatch` transactions on-chain.
+High-performance relayer service for Privacy Protocol. It accepts proof payloads over HTTP, validates anti-theft and fee constraints, batches requests, and submits pool transactions on-chain (`withdraw` / `executeAction`).
 
 ## Features
 
@@ -94,14 +94,15 @@ Response:
 
 ## Contract/Circuit Assumptions
 
-The relayer targets a pool contract exposing:
-
-- `executeBatch(bytes[] proofs, bytes32[][] publicInputs)`
-
 The proving flow is expected to provide at least:
 
 - one public input containing relayer address (bytes32-encoded address)
 - one public input containing relayer fee in wei (`uint256`)
+
+Relay metadata is expected to include:
+
+- `operation`: `withdraw` or `executeAction`
+- operation-specific fields required to build the target pool call
 
 Set indices via:
 

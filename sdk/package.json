@@ -1,6 +1,6 @@
 {
   "name": "privacy-protocol",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Plug-and-play privacy middleware SDK with core primitives and React hooks.",
   "license": "MIT",
   "main": "./dist/index.mjs",

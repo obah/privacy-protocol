@@ -19,7 +19,7 @@ function readEnvNumber(value: string | undefined, fallback: number): number {
 export const DEMO_RELAYER: RelayerTransportConfig = {
   url:
     process.env.NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_URL ??
-    "http://localhost:8787",
+    "https://privacy-protocol-relayer.onrender.com",
   endpoint: process.env.NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_ENDPOINT ?? "/relay",
   relayerPublicInputIndex: readEnvNumber(
     process.env.NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_PUBLIC_INPUT_INDEX,
@@ -27,7 +27,7 @@ export const DEMO_RELAYER: RelayerTransportConfig = {
   ),
   relayerAddress:
     process.env.NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_ADDRESS ??
-    "0x0000000000000000000000000000000000000000",
+    "0xead3818b12897994e10Cba6d311804A8800926B9",
   feePublicInputIndex: readEnvNumber(
     process.env.NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_FEE_INPUT_INDEX,
     7,

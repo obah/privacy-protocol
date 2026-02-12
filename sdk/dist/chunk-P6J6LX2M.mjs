@@ -482,6 +482,7 @@ var PrivacyProtocolSDK = class {
         token,
         recipient,
         amount: amount.toString(),
+        calldataHash: dataHash,
         nullifierHash,
         rootHash,
         newCommitment
@@ -540,6 +541,7 @@ var PrivacyProtocolSDK = class {
         token,
         amount: amount.toString(),
         target,
+        data,
         actionId,
         nullifierHash,
         rootHash,
@@ -853,4 +855,4 @@ export {
   PrivacyProtocolSDK,
   core_default
 };
-//# sourceMappingURL=chunk-BJ65LMH4.mjs.map
+//# sourceMappingURL=chunk-P6J6LX2M.mjs.map
