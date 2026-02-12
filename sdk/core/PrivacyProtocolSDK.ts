@@ -312,6 +312,9 @@ export class PrivacyProtocolSDK {
   async getPrivateTransactionDetails(
     txHash: string,
   ): Promise<PrivateTransactionDetails> {
+    const configuredRelayerAddress =
+      this.options.relayer?.relayerAddress ?? "relayer";
+
     if (txHash.startsWith("relay:")) {
       const requestId = txHash.slice("relay:".length);
       if (requestId) {
@@ -323,8 +326,8 @@ export class PrivacyProtocolSDK {
             } catch {
               return {
                 txHash: relayStatus.tx_hash,
-                initiator: "relayer",
-                gasPayer: "relayer",
+                initiator: configuredRelayerAddress,
+                gasPayer: configuredRelayerAddress,
                 method: "relay_submission",
                 methodId: "relay",
                 parameters: "submitted via relayer",
@@ -340,8 +343,8 @@ export class PrivacyProtocolSDK {
 
       return {
         txHash,
-        initiator: "relayer",
-        gasPayer: "relayer",
+        initiator: configuredRelayerAddress,
+        gasPayer: configuredRelayerAddress,
         method: "relay_submission",
         methodId: "relay",
         parameters: "queued via relayer",

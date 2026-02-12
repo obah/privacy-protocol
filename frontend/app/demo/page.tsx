@@ -194,6 +194,34 @@ function LogRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+type LifecycleStepTone = "done" | "active" | "pending" | "error";
+
+function LifecycleStep({
+  title,
+  tone,
+  detail,
+}: {
+  title: string;
+  tone: LifecycleStepTone;
+  detail: string;
+}) {
+  const toneClasses =
+    tone === "done"
+      ? "border-emerald-500/45 bg-emerald-500/10 text-emerald-900 dark:border-emerald-400/40 dark:bg-emerald-400/10 dark:text-emerald-100"
+      : tone === "active"
+        ? "border-sky-500/45 bg-sky-500/10 text-sky-900 dark:border-sky-400/45 dark:bg-sky-400/10 dark:text-sky-100"
+        : tone === "error"
+          ? "border-rose-500/45 bg-rose-500/10 text-rose-900 dark:border-rose-400/45 dark:bg-rose-400/10 dark:text-rose-100"
+          : "border-slate-400/35 bg-slate-500/5 text-slate-700 dark:border-slate-500/40 dark:bg-slate-500/10 dark:text-slate-200";
+
+  return (
+    <div className={cn("rounded-lg border px-2.5 py-2", toneClasses)}>
+      <p className="text-[10px] tracking-[0.15em] uppercase">{title}</p>
+      <p className="mt-1 text-[11px] break-all">{detail}</p>
+    </div>
+  );
+}
+
 function NormalTransactionCard({ log }: { log: NormalTransactionLog }) {
   const { data: transaction } = useTransaction({ hash: log.hash });
   const { data: receipt } = useWaitForTransactionReceipt({ hash: log.hash });
@@ -264,9 +292,9 @@ function PrivateTransactionCard({ log }: { log: PrivateTransactionLog }) {
   });
 
   const txSenderRaw =
-    log.metadata?.initiator ?? transaction?.from ?? "pending...";
+    transaction?.from ?? log.metadata?.initiator ?? "pending...";
   const gasPayerRaw =
-    log.metadata?.gasPayer ?? transaction?.from ?? "pending...";
+    transaction?.from ?? log.metadata?.gasPayer ?? "pending...";
   const targetCallerRaw = log.metadata?.proxyAddress;
   const method =
     log.metadata?.method ??
@@ -283,9 +311,14 @@ function PrivateTransactionCard({ log }: { log: PrivateTransactionLog }) {
         : "pending");
   const noiseSeed = transaction?.input ?? log.hash;
   const relayRequestId = log.metadata?.relayRequestId;
+  const relayTxHash = onchainHash ?? (log.metadata?.relayTxHash as Hex | undefined);
+  const relaySubmittedAt = log.metadata?.relaySubmittedAt;
   const relayQueueLength = log.metadata?.relayQueueLength;
   const relayGasEstimate = log.metadata?.relayGasEstimate;
   const relayMinRequiredFeeWei = log.metadata?.relayMinRequiredFeeWei;
+  const isRelaySubmitted = Boolean(relayTxHash);
+  const isRelayConfirmed = receipt?.status === "success" || receipt?.status === "reverted";
+  const isRelayReverted = receipt?.status === "reverted";
 
   return (
     <article className="rounded-2xl border border-sky-500/35 bg-transparent p-4 shadow-[0_0_0_1px_rgba(56,189,248,0.1),0_10px_24px_-20px_rgba(56,189,248,0.4)] dark:border-sky-400/30 dark:bg-[#070910] dark:shadow-[0_0_0_1px_rgba(56,189,248,0.12),0_20px_40px_-28px_rgba(56,189,248,0.9)]">
@@ -328,6 +361,49 @@ function PrivateTransactionCard({ log }: { log: PrivateTransactionLog }) {
         ) : null}
         <LogRow label="Privacy lvl" value={log.privacyLevel} />
       </div>
+
+      {relayRequestId ? (
+        <div className="mt-3 rounded-xl border border-sky-500/30 bg-sky-500/5 p-3">
+          <p className="text-[11px] tracking-[0.16em] text-sky-800/80 uppercase dark:text-sky-200/80">
+            Relay Receipt Lifecycle
+          </p>
+          <div className="mt-2 grid gap-2 sm:grid-cols-3">
+            <LifecycleStep
+              title="Queued"
+              tone="done"
+              detail={relayRequestId}
+            />
+            <LifecycleStep
+              title="Submitted"
+              tone={isRelaySubmitted ? "done" : "active"}
+              detail={
+                isRelaySubmitted && relayTxHash
+                  ? truncate(relayTxHash, 14, 10)
+                  : relaySubmittedAt
+                    ? new Date(relaySubmittedAt).toLocaleTimeString()
+                    : "waiting for batch submit"
+              }
+            />
+            <LifecycleStep
+              title="Confirmed"
+              tone={
+                isRelayConfirmed
+                  ? isRelayReverted
+                    ? "error"
+                    : "done"
+                  : "pending"
+              }
+              detail={
+                isRelayConfirmed
+                  ? isRelayReverted
+                    ? "reverted on-chain"
+                    : "confirmed on-chain"
+                  : "waiting for confirmation"
+              }
+            />
+          </div>
+        </div>
+      ) : null}
 
       <NoiseBlock seed={log.hash} tone="sky" />
 
@@ -457,6 +533,10 @@ export default function DemoPage() {
             hash: update.txHash,
             metadata: {
               ...log.metadata,
+              initiator: undefined,
+              gasPayer: undefined,
+              relayTxHash: update.txHash,
+              relaySubmittedAt: Date.now(),
               status: undefined,
             },
           };

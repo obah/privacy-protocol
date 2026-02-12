@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,10 +26,7 @@ import type {
   PrivateTransactionReporter,
 } from "./transaction-log-types";
 import { Contract, Interface } from "ethers";
-import {
-  useDeposit,
-  useExecuteAction,
-} from "privacy-protocol/hooks";
+import { useDeposit, useExecuteAction } from "privacy-protocol/hooks";
 import type { PrivateTransactionDetails } from "privacy-protocol/core";
 import { useEthersFromWagmi } from "@/lib/useEthersFromWagmi";
 
@@ -55,8 +52,19 @@ export default function DefiDemoContent({
   const swapInterface = new Interface([
     "function swap(address tokenIn, uint256 amountIn, address tokenOut)",
   ]);
+  const poolEventInterface = useMemo(
+    () =>
+      new Interface([
+        "event PrivacyProtocolPool__ActionExecuted(bytes32 nullifierHash, address proxy)",
+      ]),
+    [],
+  );
 
-  const { deposit, sdk: privacySdk, isReady: isPrivacyReady } = useDeposit({
+  const {
+    deposit,
+    sdk: privacySdk,
+    isReady: isPrivacyReady,
+  } = useDeposit({
     poolAddress: DEMO_CONTRACTS.PrivacyProtocolPool,
     provider,
     signer,
@@ -107,9 +115,21 @@ export default function DefiDemoContent({
     hash,
   });
 
+  const parsedAmount = useMemo(() => {
+    if (!amountIn) {
+      return undefined;
+    }
+
+    try {
+      return parseEther(amountIn);
+    } catch {
+      return undefined;
+    }
+  }, [amountIn]);
+
   const needsApproval =
-    amountIn && allowance !== undefined
-      ? allowance < parseEther(amountIn || "0")
+    parsedAmount !== undefined && allowance !== undefined
+      ? allowance < parsedAmount
       : false;
 
   const isPending = isIncognito
@@ -169,6 +189,150 @@ export default function DefiDemoContent({
     });
   };
 
+  const sleep = (ms: number) =>
+    new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
+
+  const resolveRelayTxHash = useCallback(
+    async (txHash: string, timeoutMs: number = 180_000): Promise<string> => {
+      if (txHash.startsWith("0x")) {
+        return txHash;
+      }
+
+      const startedAt = Date.now();
+      while (Date.now() - startedAt < timeoutMs) {
+        const details = await privacySdk
+          ?.getPrivateTransactionDetails(txHash)
+          .catch(() => null);
+
+        if (details?.txHash?.startsWith("0x")) {
+          return details.txHash;
+        }
+
+        await sleep(2_000);
+      }
+
+      throw new Error("Timed out waiting for relayer submission.");
+    },
+    [privacySdk],
+  );
+
+  const waitForReceipt = useCallback(
+    async (txHash: string, timeoutMs: number = 180_000) => {
+      const startedAt = Date.now();
+      while (Date.now() - startedAt < timeoutMs) {
+        const receipt = await provider?.getTransactionReceipt(txHash);
+        if (receipt) {
+          return receipt;
+        }
+        await sleep(2_000);
+      }
+
+      throw new Error("Timed out waiting for transaction confirmation.");
+    },
+    [provider],
+  );
+
+  const autoWithdrawSwapOutput = useCallback(
+    async (relayOrTxHash: string, secret: string) => {
+      if (!privacySdk || !provider || !signer || !address) {
+        return;
+      }
+
+      toast.info("Private swap queued. Waiting for relay confirmation...");
+
+      const onchainHash = await resolveRelayTxHash(relayOrTxHash);
+      const receipt = await waitForReceipt(onchainHash);
+
+      if (receipt.status !== 1) {
+        throw new Error("Private swap transaction reverted on-chain.");
+      }
+
+      let proxyAddress: string | null = null;
+      for (const log of receipt.logs) {
+        if (
+          log.address.toLowerCase() !==
+          DEMO_CONTRACTS.PrivacyProtocolPool.toLowerCase()
+        ) {
+          continue;
+        }
+
+        try {
+          const parsed = poolEventInterface.parseLog({
+            topics: [...log.topics],
+            data: log.data,
+          });
+
+          if (parsed?.name === "PrivacyProtocolPool__ActionExecuted") {
+            proxyAddress = (parsed.args[1] as string) ?? null;
+            break;
+          }
+        } catch {
+          continue;
+        }
+      }
+
+      if (!proxyAddress) {
+        throw new Error(
+          "Could not locate proxy address from action receipt logs.",
+        );
+      }
+
+      const rewardTokenContract = new Contract(
+        DEMO_CONTRACTS.USDTpp,
+        ["function balanceOf(address account) view returns (uint256)"],
+        provider,
+      );
+
+      const proxyRewardBalance = (await rewardTokenContract.getFunction(
+        "balanceOf",
+      )(proxyAddress)) as bigint;
+
+      if (proxyRewardBalance <= BigInt(0)) {
+        toast.info("No USDTpp balance found on proxy for auto-withdraw.");
+        return;
+      }
+
+      const proxyContract = new Contract(
+        proxyAddress,
+        [
+          "function withdraw(address token, address recipient, bytes32 secret) external",
+        ],
+        signer,
+      );
+
+      const withdrawTx = await proxyContract.getFunction("withdraw")(
+        DEMO_CONTRACTS.USDTpp,
+        address,
+        secret,
+      );
+      await withdrawTx.wait();
+
+      if (onNormalTransaction) {
+        onNormalTransaction({
+          hash: withdrawTx.hash as `0x${string}`,
+          source: "defi",
+          methodHint: "proxy.withdraw",
+          parametersHint: `token=USDTpp, recipient=${address}`,
+          privacyLevel: "Public",
+        });
+      }
+
+      toast.success("USDTpp auto-withdrawn from proxy to your wallet.");
+    },
+    [
+      privacySdk,
+      provider,
+      signer,
+      address,
+      resolveRelayTxHash,
+      waitForReceipt,
+      poolEventInterface,
+      onNormalTransaction,
+    ],
+  );
+
   useEffect(() => {
     if (isIncognito) {
       return;
@@ -203,13 +367,18 @@ export default function DefiDemoContent({
       if (pendingTxType === "approval") {
         toast.success("Approval successful! Initiating swap...");
         refetchAllowance();
+        if (parsedAmount === undefined) {
+          toast.error("Invalid amount. Please enter a valid number.");
+          setPendingTxType(null);
+          return;
+        }
         setTimeout(() => {
           setPendingTxType("swap");
           writeContract({
             address: DEMO_CONTRACTS.DemoDefi,
             abi: DEMO_DEFI_ABI,
             functionName: "swap",
-            args: [parseEther(amountIn)],
+            args: [parsedAmount],
           });
         }, 1000);
       } else if (pendingTxType === "swap") {
@@ -233,6 +402,7 @@ export default function DefiDemoContent({
     refetchAllowance,
     pendingTxType,
     amountIn,
+    parsedAmount,
     writeContract,
   ]);
 
@@ -241,12 +411,10 @@ export default function DefiDemoContent({
       toast.error("Please connect your wallet");
       return;
     }
-    if (!amountIn || Number(amountIn) <= 0) {
+    if (parsedAmount === undefined || parsedAmount <= BigInt(0)) {
       toast.error("Please enter a valid amount");
       return;
     }
-
-    const parsedAmount = parseEther(amountIn);
 
     if (isIncognito) {
       if (!isPrivacyReady || !privacySdk || !signer || !provider) {
@@ -341,7 +509,20 @@ export default function DefiDemoContent({
           },
         );
 
-        toast.success("Private swap successful!");
+        void autoWithdrawSwapOutput(
+          executeResult.txHash,
+          depositResult.secret,
+        ).catch((error) => {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Auto-withdraw after private swap failed.";
+          toast.error(message);
+        });
+
+        toast.success(
+          "Private swap submitted. Auto-withdraw will run after confirmation.",
+        );
         setAmountIn("");
       } catch (error) {
         const message =
@@ -402,7 +583,7 @@ export default function DefiDemoContent({
                 placeholder="0.0"
                 value={amountIn}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setAmountIn(e.target.value)
+                  setAmountIn(e.target.value.trim())
                 }
               />
 
@@ -452,10 +633,21 @@ export default function DefiDemoContent({
             </div>
           </div>
 
+          {isIncognito ? (
+            <div className="rounded-md border border-emerald-500/35 bg-emerald-500/8 p-3 text-xs text-emerald-900/85 dark:border-emerald-400/30 dark:bg-emerald-400/8 dark:text-emerald-100/80">
+              Demo note: after private swap execution, minted USDTpp is
+              auto-withdrawn from the generated proxy address to your connected
+              wallet using your generated secret. That final claim step links
+              back to this wallet in the demo. In production, users can keep the
+              secret client-side and withdraw to a different address (or any
+              custom app flow) to break final linkage.
+            </div>
+          ) : null}
+
           <Button
             className="mt-4 h-12 w-full border border-emerald-500/50 bg-emerald-500/15 text-lg font-semibold text-emerald-900 hover:bg-emerald-500/25 dark:border-emerald-300/45 dark:text-emerald-50"
             onClick={handleAction}
-            disabled={isPending || !address || !amountIn}
+            disabled={isPending || !address || parsedAmount === undefined}
           >
             {isIncognito ? (
               isPending ? (

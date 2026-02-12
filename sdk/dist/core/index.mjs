@@ -4,7 +4,7 @@ import {
   core_default,
   merkleTree,
   utils_exports
-} from "../chunk-53HXHJOO.mjs";
+} from "../chunk-FKOVOH6P.mjs";
 import "../chunk-D57E6H3M.mjs";
 export {
   DEFAULT_PRIVACY_PROTOCOL_CIRCUIT,

@@ -23,9 +23,12 @@ export interface PrivateTransactionMetadata {
   proxyAddress?: string;
   noteCommitment?: string;
   relayRequestId?: string;
+  relayTxHash?: string;
   relayQueueLength?: number;
   relayGasEstimate?: string;
   relayMinRequiredFeeWei?: string;
+  relaySubmittedAt?: number;
+  relayConfirmedAt?: number;
 }
 
 export interface PrivateTransactionEvent {

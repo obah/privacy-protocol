@@ -1,43 +1,42 @@
-# Privacy Protocol
+# Privacy Protocol Documentation
 
-Privacy Protocol is now relayer-first for private actions.
+Privacy Protocol lets dApps route sensitive actions through a privacy pool + relayer flow so user actions are harder to link directly to their wallet activity.
 
-## Notable Changes
+## Developer Quickstart
 
-- Private `executeAction` and private `withdraw` use relayer transport by default in the SDK.
-- Private execution returns `relay:<request_id>` immediately after queueing.
-- Frontend demo logs now include relay metadata:
-  - request id
-  - queue length
-  - gas estimate
-  - minimum required fee
+1. Install the SDK in your app.
+2. Configure your deployed pool address.
+3. Configure relayer URL + relayer address.
+4. Use SDK core methods or React hooks for private actions.
+5. Render relay lifecycle state in your transaction UI.
 
-## End-to-End Flow
+## Required App Configuration
 
-1. User deposits into `PrivacyProtocolPool` on-chain.
-2. User generates proof client-side with Noir + UltraHonk.
-3. SDK submits `{ proof, public_inputs }` to relayer (`POST /relay`).
-4. Relayer validates relayer-address input, validates fee, and queues request.
-5. Worker submits batch to `FanPool.executeBatch(...)`.
-6. Batched tx is mined and visible on explorer from relayer address.
-
-## Frontend / dApp Integration
-
-Set public env vars in your app:
+Set these in your frontend environment:
 
 - `NEXT_PUBLIC_PRIVACY_PROTOCOL_POOL_ADDRESS`
 - `NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_URL`
-- `NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_ENDPOINT`
-- `NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_PUBLIC_INPUT_INDEX`
+- `NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_ENDPOINT` (optional, default `/relay`)
+- `NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_PUBLIC_INPUT_INDEX` (default `6`)
 - `NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_ADDRESS`
-- `NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_FEE_INPUT_INDEX`
+- `NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_FEE_INPUT_INDEX` (default `7`)
 - `NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_FEE_WEI`
 
-## Registry Status
+## Private Transaction Lifecycle
 
-There is currently no on-chain or off-chain relayer operator registry implementation in this repository.
+Private actions are relayed in three observable stages:
 
-## Next Steps
+1. `queued`: SDK returns `txHash` as `relay:<request_id>`.
+2. `submitted`: relayer broadcasts on-chain tx; request maps to real `0x...` tx hash.
+3. `confirmed`: chain receipt is successful (or reverted).
 
-- [Installation](getting-started/installation.md)
-- [Quickstart](getting-started/quickstart.md)
+In explorer, submitted private actions show the relayer as `tx.from` and proxy-mediated execution on target contracts.
+
+## Integration Paths
+
+- SDK Core: `privacy-protocol/core`
+- React Hooks: `privacy-protocol/hooks`
+
+Use the SDK README for full code examples:
+
+- `sdk/README.md`

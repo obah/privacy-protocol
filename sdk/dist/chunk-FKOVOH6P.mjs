@@ -564,6 +564,7 @@ var PrivacyProtocolSDK = class {
     };
   }
   async getPrivateTransactionDetails(txHash) {
+    const configuredRelayerAddress = this.options.relayer?.relayerAddress ?? "relayer";
     if (txHash.startsWith("relay:")) {
       const requestId = txHash.slice("relay:".length);
       if (requestId) {
@@ -575,8 +576,8 @@ var PrivacyProtocolSDK = class {
             } catch {
               return {
                 txHash: relayStatus.tx_hash,
-                initiator: "relayer",
-                gasPayer: "relayer",
+                initiator: configuredRelayerAddress,
+                gasPayer: configuredRelayerAddress,
                 method: "relay_submission",
                 methodId: "relay",
                 parameters: "submitted via relayer",
@@ -592,8 +593,8 @@ var PrivacyProtocolSDK = class {
       }
       return {
         txHash,
-        initiator: "relayer",
-        gasPayer: "relayer",
+        initiator: configuredRelayerAddress,
+        gasPayer: configuredRelayerAddress,
         method: "relay_submission",
         methodId: "relay",
         parameters: "queued via relayer",
@@ -930,4 +931,4 @@ export {
   PrivacyProtocolSDK,
   core_default
 };
-//# sourceMappingURL=chunk-53HXHJOO.mjs.map
+//# sourceMappingURL=chunk-FKOVOH6P.mjs.map
