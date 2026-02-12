@@ -1,10 +1,14 @@
-import type { Barretenberg, Fr } from "@aztec/bb.js";
-import { loadBb } from "./bb";
+import {
+  loadBb,
+  type BbBarretenberg,
+  type BbFr,
+  type BbFrClass,
+} from "./bb";
 
-let bbInstance: Barretenberg | undefined;
-let frClass: typeof Fr | undefined;
+let bbInstance: BbBarretenberg | undefined;
+let frClass: BbFrClass | undefined;
 
-async function getFrClass(): Promise<typeof Fr> {
+async function getFrClass(): Promise<BbFrClass> {
   if (!frClass) {
     const bbModule = await loadBb();
     frClass = bbModule.Fr;
@@ -13,7 +17,7 @@ async function getFrClass(): Promise<typeof Fr> {
   return frClass;
 }
 
-async function toFr(value: Fr | string): Promise<Fr> {
+async function toFr(value: BbFr | string): Promise<BbFr> {
   if (typeof value !== "string") {
     return value;
   }
@@ -27,12 +31,16 @@ async function toFr(value: Fr | string): Promise<Fr> {
   return FrCtor.fromString(value);
 }
 
-async function getBb(): Promise<Barretenberg> {
+async function getBb(): Promise<BbBarretenberg> {
   if (!bbInstance) {
     const bbModule = await loadBb();
     const BarretenbergCtor = bbModule.Barretenberg;
 
     bbInstance = await BarretenbergCtor.new();
+  }
+
+  if (!bbInstance) {
+    throw new Error("Failed to initialize Barretenberg");
   }
 
   return bbInstance;
@@ -62,8 +70,8 @@ export async function generateCommitment(
  * Computes the nullifier hash.
  */
 export async function computeNullifierHash(
-  nullifier: Fr | string,
-): Promise<Fr> {
+  nullifier: BbFr | string,
+): Promise<BbFr> {
   const bb = await getBb();
   const nullifierFr = await toFr(nullifier);
   return await bb.poseidon2Hash([nullifierFr]);
@@ -73,10 +81,10 @@ export async function computeNullifierHash(
  * Computes a new commitment.
  */
 export async function computeCommitment(
-  nullifier: Fr | string,
-  secret: Fr | string,
+  nullifier: BbFr | string,
+  secret: BbFr | string,
   amount: string | number | bigint,
-): Promise<Fr> {
+): Promise<BbFr> {
   const bb = await getBb();
   const FrCtor = await getFrClass();
   const nullifierFr = await toFr(nullifier);
@@ -89,9 +97,9 @@ export async function computeCommitment(
  * Computes the action context hash from external call address and data hash.
  */
 export async function computeActionContextHash(
-  externalAddress: Fr | string,
-  dataHash: Fr | string,
-): Promise<Fr> {
+  externalAddress: BbFr | string,
+  dataHash: BbFr | string,
+): Promise<BbFr> {
   const bb = await getBb();
   const externalAddressFr = await toFr(externalAddress);
   const dataHashFr = await toFr(dataHash);
@@ -102,12 +110,12 @@ export async function computeActionContextHash(
  * Computes the new output commitment bound to action context.
  */
 export async function computeContextBoundCommitment(
-  newNullifier: Fr | string,
-  secret: Fr | string,
+  newNullifier: BbFr | string,
+  secret: BbFr | string,
   amountLeft: string | number | bigint,
-  externalAddress: Fr | string,
-  dataHash: Fr | string,
-): Promise<Fr> {
+  externalAddress: BbFr | string,
+  dataHash: BbFr | string,
+): Promise<BbFr> {
   const bb = await getBb();
   const FrCtor = await getFrClass();
   const newNullifierFr = await toFr(newNullifier);
@@ -125,7 +133,7 @@ export async function computeContextBoundCommitment(
   ]);
 }
 export interface CommitmentData {
-  secret: Fr;
-  nullifier: Fr;
-  commitment: Fr;
+  secret: BbFr;
+  nullifier: BbFr;
+  commitment: BbFr;
 }

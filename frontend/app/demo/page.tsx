@@ -236,8 +236,17 @@ function NormalTransactionCard({ log }: { log: NormalTransactionLog }) {
 }
 
 function PrivateTransactionCard({ log }: { log: PrivateTransactionLog }) {
-  const { data: transaction } = useTransaction({ hash: log.hash });
-  const { data: receipt } = useWaitForTransactionReceipt({ hash: log.hash });
+  const onchainHash = log.hash.startsWith("0x")
+    ? (log.hash as Hex)
+    : undefined;
+  const { data: transaction } = useTransaction({
+    hash: onchainHash,
+    query: { enabled: Boolean(onchainHash) },
+  });
+  const { data: receipt } = useWaitForTransactionReceipt({
+    hash: onchainHash,
+    query: { enabled: Boolean(onchainHash) },
+  });
 
   const txSenderRaw = log.metadata?.initiator ?? transaction?.from ?? "pending...";
   const gasPayerRaw = log.metadata?.gasPayer ?? transaction?.from ?? "pending...";
@@ -256,6 +265,10 @@ function PrivateTransactionCard({ log }: { log: PrivateTransactionLog }) {
         ? "reverted"
         : "pending");
   const noiseSeed = transaction?.input ?? log.hash;
+  const relayRequestId = log.metadata?.relayRequestId;
+  const relayQueueLength = log.metadata?.relayQueueLength;
+  const relayGasEstimate = log.metadata?.relayGasEstimate;
+  const relayMinRequiredFeeWei = log.metadata?.relayMinRequiredFeeWei;
 
   return (
     <article className="rounded-2xl border border-sky-500/35 bg-transparent p-4 shadow-[0_0_0_1px_rgba(56,189,248,0.1),0_10px_24px_-20px_rgba(56,189,248,0.4)] dark:border-sky-400/30 dark:bg-[#070910] dark:shadow-[0_0_0_1px_rgba(56,189,248,0.12),0_20px_40px_-28px_rgba(56,189,248,0.9)]">
@@ -284,20 +297,36 @@ function PrivateTransactionCard({ log }: { log: PrivateTransactionLog }) {
         {log.metadata?.noteCommitment ? (
           <LogRow label="Commitment" value={log.metadata.noteCommitment} />
         ) : null}
+        {relayRequestId ? <LogRow label="Relay req" value={relayRequestId} /> : null}
+        {relayQueueLength !== undefined ? (
+          <LogRow label="Relay queue" value={relayQueueLength.toString()} />
+        ) : null}
+        {relayGasEstimate ? (
+          <LogRow label="Relay gas est" value={relayGasEstimate} />
+        ) : null}
+        {relayMinRequiredFeeWei ? (
+          <LogRow label="Relay min fee" value={relayMinRequiredFeeWei} />
+        ) : null}
         <LogRow label="Privacy lvl" value={log.privacyLevel} />
       </div>
 
       <NoiseBlock seed={log.hash} tone="sky" />
 
-      <Link
-        href={`${ARBITRUM_SEPOLIA_EXPLORER}/tx/${log.hash}`}
-        target="_blank"
-        rel="noreferrer"
-        className="mt-3 inline-flex items-center gap-1 text-xs text-sky-800/90 underline-offset-4 hover:text-sky-900 hover:underline dark:text-sky-200/80 dark:hover:text-sky-100"
-      >
-        View on Arbitrum Sepolia Etherscan
-        <ExternalLink size={12} />
-      </Link>
+      {onchainHash ? (
+        <Link
+          href={`${ARBITRUM_SEPOLIA_EXPLORER}/tx/${onchainHash}`}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 inline-flex items-center gap-1 text-xs text-sky-800/90 underline-offset-4 hover:text-sky-900 hover:underline dark:text-sky-200/80 dark:hover:text-sky-100"
+        >
+          View on Arbitrum Sepolia Etherscan
+          <ExternalLink size={12} />
+        </Link>
+      ) : (
+        <p className="mt-3 text-xs text-sky-800/85 dark:text-sky-100/75">
+          Relayed request queued. On-chain hash will appear after batch submit.
+        </p>
+      )}
     </article>
   );
 }
@@ -492,8 +521,9 @@ export default function DemoPage() {
                 </p>
               </div>
               <p className="mb-2 text-xs text-sky-800/80 dark:text-sky-200/70">
-                Pool transaction sender is public. For `executeAction`, target
-                contracts see the privacy proxy as caller.
+                Private actions are submitted to the relayer and later batched
+                on-chain. The relayer pays gas, and target contracts see the
+                privacy proxy as caller.
               </p>
               {privateLogs.length === 0 ? (
                 <div className="rounded-xl border border-sky-500/35 bg-sky-500/5 p-4 font-mono text-xs text-sky-800/85 dark:border-sky-500/30 dark:text-sky-100/75">

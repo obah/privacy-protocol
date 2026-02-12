@@ -17,12 +17,46 @@ export interface DepositResult {
   txHash: string;
 }
 
+export interface RelayerTransportConfig {
+  url: string;
+  endpoint?: string;
+  headers?: Record<string, string>;
+  relayerPublicInputIndex?: number;
+  relayerAddress?: string;
+  feePublicInputIndex?: number;
+  relayerFeeWei?: string | number | bigint;
+  metadata?: Record<string, unknown>;
+}
+
+export interface PrivacyProtocolSDKOptions {
+  relayer?: RelayerTransportConfig;
+}
+
+export interface ExecutionCallOptions {
+  relayerPublicInputIndex?: number;
+  relayerAddress?: string;
+  feePublicInputIndex?: number;
+  relayerFeeWei?: string | number | bigint;
+  relayMetadata?: Record<string, unknown>;
+}
+
+interface RelayQueuedResponseWire {
+  request_id: string;
+  queue_len: number;
+  gas_estimate: string;
+  min_required_fee_wei: string;
+}
+
 export interface ExecutionResult {
   txHash: string;
   newSecret: string;
   newNullifier: string;
   newCommitment: string;
   proxyAddress?: string;
+  relayRequestId?: string;
+  relayQueueLength?: number;
+  relayGasEstimate?: string;
+  relayMinRequiredFeeWei?: string;
 }
 
 export interface ActionRequest {
@@ -51,6 +85,23 @@ export interface PrivateTransactionDetails {
 }
 
 export const DEFAULT_PRIVACY_PROTOCOL_CIRCUIT = bundledCircuit;
+const ZERO_BYTES32 = "0x" + "00".repeat(32);
+
+interface RelayerFetchResponse {
+  ok: boolean;
+  status: number;
+  json: () => Promise<unknown>;
+  text: () => Promise<string>;
+}
+
+type RelayerFetch = (
+  input: string,
+  init?: {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+  },
+) => Promise<RelayerFetchResponse>;
 
 const PRIVACY_PROTOCOL_POOL_ABI = [
   "function deposit(address token, uint256 amount, bytes32 commitment) external",
@@ -66,15 +117,18 @@ export class PrivacyProtocolSDK {
   contractAddress: string;
   circuit: any;
   contract: Contract;
+  options: PrivacyProtocolSDKOptions;
 
   constructor(
     provider: Provider,
     contractAddress: string,
     circuit: any = DEFAULT_PRIVACY_PROTOCOL_CIRCUIT,
+    options: PrivacyProtocolSDKOptions = {},
   ) {
     this.provider = provider;
     this.contractAddress = contractAddress;
     this.circuit = circuit;
+    this.options = options;
     this.contract = new ethers.Contract(
       contractAddress,
       PRIVACY_PROTOCOL_POOL_ABI,
@@ -118,37 +172,52 @@ export class PrivacyProtocolSDK {
     amountInPool: string | number | bigint,
     leaves: string[],
     signer: Signer,
+    executionOptions: ExecutionCallOptions = {},
   ): Promise<ExecutionResult> {
     const dataHash =
       "0x0000000000000000000000000000000000000000000000000000000000000000";
 
-    const { proof, newCommitment, newNullifier, rootHash, nullifierHash } =
-      await this._generateProof(
-        secret,
-        nullifier,
-        amountInPool,
-        amount,
-        recipient,
-        dataHash,
-        leaves,
-      );
-
-    const tx = await this.connect(signer).getFunction("withdraw")(
-      token,
-      recipient,
-      amount,
-      nullifierHash,
-      new Uint8Array(Buffer.from(proof.slice(2), "hex")), // Convert hex string back to bytes for ethers
-      rootHash,
-      dataHash,
+    const {
+      proof,
+      publicInputs,
       newCommitment,
+      newNullifier,
+      rootHash,
+      nullifierHash,
+    } = await this._generateProof(
+      secret,
+      nullifier,
+      amountInPool,
+      amount,
+      recipient,
+      dataHash,
+      leaves,
+    );
+
+    const relayResult = await this.submitToRelayer(
+      proof,
+      publicInputs,
+      executionOptions,
+      {
+        operation: "withdraw",
+        token,
+        recipient,
+        amount: amount.toString(),
+        nullifierHash,
+        rootHash,
+        newCommitment,
+      },
     );
 
     return {
-      txHash: tx.hash,
+      txHash: `relay:${relayResult.request_id}`,
       newSecret: secret,
       newNullifier: newNullifier,
       newCommitment: newCommitment,
+      relayRequestId: relayResult.request_id,
+      relayQueueLength: relayResult.queue_len,
+      relayGasEstimate: relayResult.gas_estimate,
+      relayMinRequiredFeeWei: relayResult.min_required_fee_wei,
     };
   }
 
@@ -163,6 +232,7 @@ export class PrivacyProtocolSDK {
     amountInPool: string | number | bigint,
     leaves: string[],
     signer: Signer,
+    executionOptions: ExecutionCallOptions = {},
   ): Promise<ExecutionResult> {
     const expectedActionId = ethers.keccak256(ethers.getBytes(secret));
     if (actionId.toLowerCase() !== expectedActionId.toLowerCase()) {
@@ -182,61 +252,69 @@ export class PrivacyProtocolSDK {
     }
     const dataHash = "0x" + truncatedHashHex;
 
-    const { proof, newCommitment, newNullifier, rootHash, nullifierHash } =
-      await this._generateProof(
-        secret,
-        nullifier,
-        amountInPool,
-        amount,
-        target,
-        dataHash,
-        leaves,
-      );
-
-    const request: ActionRequest = {
-      token,
+    const {
+      proof,
+      publicInputs,
+      newCommitment,
+      newNullifier,
+      rootHash,
+      nullifierHash,
+    } = await this._generateProof(
+      secret,
+      nullifier,
+      amountInPool,
       amount,
       target,
-      data,
-      actionId,
-      nullifierHash,
+      dataHash,
+      leaves,
+    );
+
+    const relayResult = await this.submitToRelayer(
       proof,
-      rootHash,
-      newCommitment,
-    };
-
-    const tx = await this.connect(signer).getFunction("executeAction")(request);
-    const receipt = await tx.wait();
-
-    let proxyAddress: string | undefined;
-
-    if (receipt && receipt.logs) {
-      for (const log of receipt.logs) {
-        try {
-          const parsedLog = this.contract.interface.parseLog(log as any);
-          if (
-            parsedLog &&
-            parsedLog.name === "PrivacyProtocolPool__ActionExecuted"
-          ) {
-            proxyAddress = parsedLog.args.proxy;
-            break;
-          }
-        } catch (e) {}
-      }
-    }
+      publicInputs,
+      executionOptions,
+      {
+        operation: "executeAction",
+        token,
+        amount: amount.toString(),
+        target,
+        actionId,
+        nullifierHash,
+        rootHash,
+        newCommitment,
+      },
+    );
 
     return {
-      txHash: tx.hash,
+      txHash: `relay:${relayResult.request_id}`,
       newSecret: secret,
       newNullifier: newNullifier,
       newCommitment: newCommitment,
-      proxyAddress,
+      relayRequestId: relayResult.request_id,
+      relayQueueLength: relayResult.queue_len,
+      relayGasEstimate: relayResult.gas_estimate,
+      relayMinRequiredFeeWei: relayResult.min_required_fee_wei,
     };
   }
 
   async getPrivateTransactionDetails(
     txHash: string,
   ): Promise<PrivateTransactionDetails> {
+    if (txHash.startsWith("relay:")) {
+      return {
+        txHash,
+        initiator: "relayer",
+        gasPayer: "relayer",
+        method: "relay_submission",
+        methodId: "relay",
+        parameters: "queued via relayer",
+        privacyLevel: "Private",
+        gasUsed: null,
+        status: "pending",
+        to: null,
+      };
+    }
+
     const tx = await this.provider.getTransaction(txHash);
 
     if (!tx) {
@@ -272,6 +350,221 @@ export class PrivacyProtocolSDK {
         : "pending",
       to: tx.to,
     };
+  }
+
+  private normalizePublicInputWord(word: unknown): string {
+    if (typeof word === "string") {
+      if (word.startsWith("0x") || word.startsWith("0X")) {
+        const normalized = word.slice(2);
+        if (normalized.length > 64) {
+          throw new Error(`public input exceeds bytes32: ${word}`);
+        }
+        return `0x${normalized.padStart(64, "0")}`;
+      }
+
+      return this.normalizePublicInputWord(BigInt(word));
+    }
+
+    if (typeof word === "number") {
+      return this.normalizePublicInputWord(BigInt(word));
+    }
+
+    if (typeof word === "bigint") {
+      if (word < 0n) {
+        throw new Error(`public input cannot be negative: ${word.toString()}`);
+      }
+
+      const hexValue = word.toString(16);
+      if (hexValue.length > 64) {
+        throw new Error(`public input exceeds bytes32: ${word.toString()}`);
+      }
+      return `0x${hexValue.padStart(64, "0")}`;
+    }
+
+    if (word instanceof Uint8Array) {
+      if (word.length > 32) {
+        throw new Error(`public input byte length exceeds 32: ${word.length}`);
+      }
+      const hexValue = ethers.hexlify(word).slice(2);
+      return `0x${hexValue.padStart(64, "0")}`;
+    }
+
+    throw new Error(`unsupported public input value type: ${typeof word}`);
+  }
+
+  private upsertPublicInputWord(
+    words: string[],
+    index: number,
+    value: string,
+  ): void {
+    if (index < 0 || !Number.isInteger(index)) {
+      throw new Error(`invalid public input index: ${index}`);
+    }
+
+    while (words.length <= index) {
+      words.push(ZERO_BYTES32);
+    }
+    words[index] = value;
+  }
+
+  private applyRelayerPublicInputs(
+    publicInputs: string[],
+    options: ExecutionCallOptions = {},
+  ): string[] {
+    const words = [...publicInputs];
+    const relayerConfig = this.options.relayer;
+
+    const relayerIndex =
+      options.relayerPublicInputIndex ??
+      relayerConfig?.relayerPublicInputIndex ??
+      undefined;
+    const relayerAddress =
+      options.relayerAddress ?? relayerConfig?.relayerAddress ?? undefined;
+
+    if (relayerIndex !== undefined) {
+      if (!relayerAddress) {
+        throw new Error(
+          "Missing relayerAddress for relayerPublicInputIndex. Configure SDK relayer options or pass execution options.",
+        );
+      }
+      const encodedAddress = ethers.AbiCoder.defaultAbiCoder().encode(
+        ["address"],
+        [relayerAddress],
+      );
+      this.upsertPublicInputWord(
+        words,
+        relayerIndex,
+        this.normalizePublicInputWord(encodedAddress),
+      );
+    }
+
+    const feeIndex =
+      options.feePublicInputIndex ?? relayerConfig?.feePublicInputIndex;
+    const relayerFeeWei = options.relayerFeeWei ?? relayerConfig?.relayerFeeWei;
+    if (feeIndex !== undefined) {
+      if (relayerFeeWei === undefined) {
+        throw new Error(
+          "Missing relayerFeeWei for feePublicInputIndex. Configure SDK relayer options or pass execution options.",
+        );
+      }
+
+      const encodedFee = ethers.AbiCoder.defaultAbiCoder().encode(
+        ["uint256"],
+        [BigInt(relayerFeeWei)],
+      );
+      this.upsertPublicInputWord(
+        words,
+        feeIndex,
+        this.normalizePublicInputWord(encodedFee),
+      );
+    }
+
+    return words;
+  }
+
+  private resolveRelayerEndpoint(): string {
+    const relayerConfig = this.options.relayer;
+    if (!relayerConfig?.url) {
+      throw new Error(
+        "Relayer URL is not configured. Set options.relayer.url when creating the SDK instance.",
+      );
+    }
+
+    const endpoint = relayerConfig.endpoint ?? "/relay";
+    if (endpoint.startsWith("http://") || endpoint.startsWith("https://")) {
+      return endpoint;
+    }
+
+    const base = relayerConfig.url.endsWith("/")
+      ? relayerConfig.url.slice(0, -1)
+      : relayerConfig.url;
+    const suffix = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+    return `${base}${suffix}`;
+  }
+
+  private getRelayerFetch(): RelayerFetch {
+    const fetchFn = (
+      globalThis as unknown as { fetch?: RelayerFetch }
+    ).fetch;
+    if (typeof fetchFn !== "function") {
+      throw new Error(
+        "Global fetch is unavailable in this runtime. Provide a fetch-capable environment for relayer transport.",
+      );
+    }
+
+    return fetchFn;
+  }
+
+  private async submitToRelayer(
+    proof: string,
+    publicInputs: unknown[],
+    executionOptions: ExecutionCallOptions,
+    operationMetadata: Record<string, unknown>,
+  ): Promise<RelayQueuedResponseWire> {
+    const fetchFn = this.getRelayerFetch();
+    const relayerConfig = this.options.relayer;
+    const endpoint = this.resolveRelayerEndpoint();
+    if (!Array.isArray(publicInputs)) {
+      throw new Error("Proof generation did not return an array of publicInputs");
+    }
+    const normalizedPublicInputs = publicInputs.map((word) =>
+      this.normalizePublicInputWord(word),
+    );
+    const relayerPublicInputs = this.applyRelayerPublicInputs(
+      normalizedPublicInputs,
+      executionOptions,
+    );
+
+    const metadata: Record<string, unknown> = {
+      ...relayerConfig?.metadata,
+      ...operationMetadata,
+      ...executionOptions.relayMetadata,
+    };
+
+    const payload: {
+      proof: string;
+      public_inputs: string[];
+      metadata?: Record<string, unknown>;
+    } = {
+      proof,
+      public_inputs: relayerPublicInputs,
+    };
+
+    if (Object.keys(metadata).length > 0) {
+      payload.metadata = metadata;
+    }
+
+    const response = await fetchFn(endpoint, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(relayerConfig?.headers ?? {}),
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      let errorMessage = `Relayer request failed with status ${response.status}`;
+      try {
+        const body = (await response.json()) as { error?: string };
+        if (body?.error) {
+          errorMessage = `Relayer request failed: ${body.error}`;
+        }
+      } catch {
+        const bodyText = await response.text();
+        if (bodyText) {
+          errorMessage = `Relayer request failed: ${bodyText}`;
+        }
+      }
+      throw new Error(errorMessage);
+    }
+
+    const body = (await response.json()) as RelayQueuedResponseWire;
+    if (!body?.request_id) {
+      throw new Error("Relayer response is missing request_id");
+    }
+
+    return body;
   }
 
   async _generateProof(

@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { ethers, type Signer } from "ethers";
-import type { ExecutionResult } from "../core";
+import type { ExecutionCallOptions, ExecutionResult } from "../core";
 import {
   buildPrivacyNote,
   resolveChainId,
@@ -26,6 +26,7 @@ export interface ExecuteActionArgs {
   leaves?: string[];
   fromBlock?: number;
   signer?: Signer;
+  executionOptions?: ExecutionCallOptions;
 }
 
 export interface UseExecuteActionOptions extends UsePrivacyProtocolOptions {
@@ -87,6 +88,7 @@ export function useExecuteAction(options: UseExecuteActionOptions) {
           amountInPool,
           leaves,
           txSigner,
+          args.executionOptions,
         );
 
         const chainId = await resolveChainId(txSigner);

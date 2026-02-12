@@ -13,12 +13,19 @@ contracts/docs/
 
 # Dotenv file
 .env
+relayer/.env
 
 # Circuits
 /circuits/target
+
+# Rust relayer artifacts
+relayer/target
 
 /node_modules
 nextra-docs/node_modules
 sdk/node_modules
 
 /.vscode
+
+frontend/.npm-cache
+sdk/.npm-cache

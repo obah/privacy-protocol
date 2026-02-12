@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import type { Signer } from "ethers";
-import type { ExecutionResult } from "../core";
+import type { ExecutionCallOptions, ExecutionResult } from "../core";
 import {
   buildPrivacyNote,
   resolveChainId,
@@ -24,6 +24,7 @@ export interface WithdrawArgs {
   leaves?: string[];
   fromBlock?: number;
   signer?: Signer;
+  executionOptions?: ExecutionCallOptions;
 }
 
 export interface UseWithdrawOptions extends UsePrivacyProtocolOptions {
@@ -81,6 +82,7 @@ export function useWithdraw(options: UseWithdrawOptions) {
           amountInPool,
           leaves,
           txSigner,
+          args.executionOptions,
         );
 
         const chainId = await resolveChainId(txSigner);

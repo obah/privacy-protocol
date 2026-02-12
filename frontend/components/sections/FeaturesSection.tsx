@@ -9,7 +9,7 @@ const features = [
     icon: Code,
     title: "Universal SDK",
     description:
-      "A lightweight npm package that wraps standard wallet providers (Wagmi/Viem) and abstracts complex circuit generation into simple async functions.",
+      "A lightweight npm package that integrates into your existing frontend. No contract changes, no asset migration—just install and wrap your provider.",
   },
   {
     icon: Shield,

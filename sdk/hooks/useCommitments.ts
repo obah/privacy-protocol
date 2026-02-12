@@ -12,21 +12,9 @@ export interface UseCommitmentsOptions extends UsePrivacyProtocolOptions {
 }
 
 export function useCommitments(options: UseCommitmentsOptions) {
-  const {
-    poolAddress,
-    provider,
-    signer,
-    circuit,
-    fromBlock = 0,
-    enabled = true,
-    refetchIntervalMs = 0,
-  } = options;
-  const { sdk } = usePrivacyProtocol({
-    poolAddress,
-    provider,
-    signer,
-    circuit,
-  });
+  const { fromBlock = 0, enabled = true, refetchIntervalMs = 0, ...contextOptions } =
+    options;
+  const { sdk } = usePrivacyProtocol(contextOptions);
   const [commitments, setCommitments] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);

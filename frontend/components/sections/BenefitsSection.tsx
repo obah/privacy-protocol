@@ -128,7 +128,7 @@ const benefits = [
     title: "Tap Into Deep Liquidity",
     icon: Layers,
     description:
-      "Don't fragment your users on a new L2. Build directly on Arbitrum/Ethereum where billions in TVL already exist.",
+      "Don't fragment liquidity or redeploy contracts to a new chain. Wrap your existing dApp on Ethereum/Arbitrum in minutes without moving a single asset.",
   },
   {
     title: "Audit-Ready Compliance",

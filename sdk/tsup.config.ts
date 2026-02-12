@@ -6,7 +6,7 @@ export default defineConfig({
     "core/index": "core/index.ts",
     "hooks/index": "hooks/index.ts",
   },
-  format: ["esm", "cjs"],
+  format: ["esm"],
   outExtension({ format }) {
     return {
       js: format === "esm" ? ".mjs" : ".cjs",
@@ -15,7 +15,9 @@ export default defineConfig({
   dts: true,
   sourcemap: true,
   clean: true,
-  splitting: false,
+  splitting: true,
   target: "es2020",
+  platform: "browser",
+  noExternal: [/^@aztec\/bb\.js/],
   external: ["react"],
 });

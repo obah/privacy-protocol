@@ -1,10 +1,9 @@
-import type { Barretenberg, Fr } from "@aztec/bb.js";
-import { loadBb } from "./bb";
+import { loadBb, type BbBarretenberg, type BbFr, type BbFrClass } from "./bb";
 
-let bbInstance: Barretenberg | undefined;
-let frClass: typeof Fr | undefined;
+let bbInstance: BbBarretenberg | undefined;
+let frClass: BbFrClass | undefined;
 
-async function getFrClass(): Promise<typeof Fr> {
+async function getFrClass(): Promise<BbFrClass> {
   if (!frClass) {
     const bbModule = await loadBb();
     frClass = bbModule.Fr;
@@ -13,17 +12,21 @@ async function getFrClass(): Promise<typeof Fr> {
   return frClass;
 }
 
-async function getBb(): Promise<Barretenberg> {
+async function getBb(): Promise<BbBarretenberg> {
   if (!bbInstance) {
     const bbModule = await loadBb();
     const BarretenbergCtor = bbModule.Barretenberg;
 
     bbInstance = await BarretenbergCtor.new();
   }
+  if (!bbInstance) {
+    throw new Error("Failed to initialize Barretenberg");
+  }
+
   return bbInstance;
 }
 
-async function toFr(value: string | Fr): Promise<Fr> {
+async function toFr(value: string | BbFr): Promise<BbFr> {
   if (typeof value !== "string") {
     return value;
   }
@@ -33,8 +36,8 @@ async function toFr(value: string | Fr): Promise<Fr> {
 }
 
 async function hashLeftRight(
-  left: string | Fr,
-  right: string | Fr,
+  left: string | BbFr,
+  right: string | BbFr,
 ): Promise<string> {
   const bb = await getBb();
   const frLeft = await toFr(left);

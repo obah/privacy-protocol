@@ -15,7 +15,10 @@ export {
 export type {
   ActionRequest,
   DepositResult,
+  ExecutionCallOptions,
   ExecutionResult,
   PrivateTransactionDetails,
+  PrivacyProtocolSDKOptions,
+  RelayerTransportConfig,
 } from "./PrivacyProtocolSDK";
 export default PrivacyProtocolSDK;

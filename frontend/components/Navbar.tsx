@@ -6,6 +6,7 @@ import { Button, buttonVariants } from "./ui/button";
 import { usePathname } from "next/navigation";
 import { ConnectKitButton } from "connectkit";
 import { useTheme } from "next-themes";
+import Image from "next/image";
 
 export const Navbar = () => {
   const { setTheme, theme } = useTheme();
@@ -23,9 +24,11 @@ export const Navbar = () => {
     <nav className="bg-background/50 fixed top-0 right-0 left-0 z-50 px-8 py-5 backdrop-blur-xl">
       <div className="flex items-center justify-between rounded-sm border border-white/10">
         <Link href="/" className="flex items-center gap-2">
-          <div className="bg-primary flex h-8 w-8 items-center justify-center rounded-lg">
-            <span className="text-primary-foreground text-lg font-bold">P</span>
-          </div>
+          {isIncognito ? (
+            <Image src="/dark-logo.svg" alt="Logo" width={24} height={24} />
+          ) : (
+            <Image src="/light-logo.svg" alt="Logo" width={24} height={24} />
+          )}
           <span className="text-lg font-semibold tracking-tight">
             Privacy Protocol
           </span>

@@ -1,31 +1,28 @@
 {
   "name": "privacy-protocol",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Plug-and-play privacy middleware SDK with core primitives and React hooks.",
   "license": "MIT",
-  "main": "./dist/index.cjs",
+  "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
+  "types": "./dist/index.d.mts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./dist/index.d.mts",
       "browser": "./dist/index.mjs",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs",
       "default": "./dist/index.mjs"
     },
     "./core": {
-      "types": "./dist/core/index.d.ts",
+      "types": "./dist/core/index.d.mts",
       "browser": "./dist/core/index.mjs",
       "import": "./dist/core/index.mjs",
-      "require": "./dist/core/index.cjs",
       "default": "./dist/core/index.mjs"
     },
     "./hooks": {
-      "types": "./dist/hooks/index.d.ts",
+      "types": "./dist/hooks/index.d.mts",
       "browser": "./dist/hooks/index.mjs",
       "import": "./dist/hooks/index.mjs",
-      "require": "./dist/hooks/index.cjs",
       "default": "./dist/hooks/index.mjs"
     }
   },
@@ -34,7 +31,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsup --config tsup.config.ts",
+    "build": "tsup --config tsup.config.ts && node ./scripts/build-workers.mjs",
     "clean": "rm -rf dist",
     "pack:check": "npm pack --dry-run",
     "prepublishOnly": "npm run clean && npm run build"
@@ -49,6 +46,7 @@
   },
   "devDependencies": {
     "@types/react": "^19.1.13",
+    "esbuild": "^0.25.9",
     "react": "^19.2.0",
     "tsup": "^8.5.0",
     "typescript": "^5.9.2"

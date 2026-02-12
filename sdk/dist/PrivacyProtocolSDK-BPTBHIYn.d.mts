@@ -6,12 +6,36 @@ interface DepositResult {
     commitment: string;
     txHash: string;
 }
+interface RelayerTransportConfig {
+    url: string;
+    endpoint?: string;
+    headers?: Record<string, string>;
+    relayerPublicInputIndex?: number;
+    relayerAddress?: string;
+    feePublicInputIndex?: number;
+    relayerFeeWei?: string | number | bigint;
+    metadata?: Record<string, unknown>;
+}
+interface PrivacyProtocolSDKOptions {
+    relayer?: RelayerTransportConfig;
+}
+interface ExecutionCallOptions {
+    relayerPublicInputIndex?: number;
+    relayerAddress?: string;
+    feePublicInputIndex?: number;
+    relayerFeeWei?: string | number | bigint;
+    relayMetadata?: Record<string, unknown>;
+}
 interface ExecutionResult {
     txHash: string;
     newSecret: string;
     newNullifier: string;
     newCommitment: string;
     proxyAddress?: string;
+    relayRequestId?: string;
+    relayQueueLength?: number;
+    relayGasEstimate?: string;
+    relayMinRequiredFeeWei?: string;
 }
 interface ActionRequest {
     token: string;
@@ -111,15 +135,22 @@ declare class PrivacyProtocolSDK {
     contractAddress: string;
     circuit: any;
     contract: Contract;
-    constructor(provider: Provider, contractAddress: string, circuit?: any);
+    options: PrivacyProtocolSDKOptions;
+    constructor(provider: Provider, contractAddress: string, circuit?: any, options?: PrivacyProtocolSDKOptions);
     connect(signer: Signer): Contract;
     deposit(token: string, amount: string | number | bigint, signer: Signer): Promise<DepositResult>;
-    withdraw(token: string, recipient: string, amount: string | number | bigint, secret: string, nullifier: string, amountInPool: string | number | bigint, leaves: string[], signer: Signer): Promise<ExecutionResult>;
-    executeAction(token: string, amount: string | number | bigint, target: string, data: string, actionId: string, secret: string, nullifier: string, amountInPool: string | number | bigint, leaves: string[], signer: Signer): Promise<ExecutionResult>;
+    withdraw(token: string, recipient: string, amount: string | number | bigint, secret: string, nullifier: string, amountInPool: string | number | bigint, leaves: string[], signer: Signer, executionOptions?: ExecutionCallOptions): Promise<ExecutionResult>;
+    executeAction(token: string, amount: string | number | bigint, target: string, data: string, actionId: string, secret: string, nullifier: string, amountInPool: string | number | bigint, leaves: string[], signer: Signer, executionOptions?: ExecutionCallOptions): Promise<ExecutionResult>;
     getPrivateTransactionDetails(txHash: string): Promise<PrivateTransactionDetails>;
+    private normalizePublicInputWord;
+    private upsertPublicInputWord;
+    private applyRelayerPublicInputs;
+    private resolveRelayerEndpoint;
+    private getRelayerFetch;
+    private submitToRelayer;
     _generateProof(secret: string, nullifier: string, amountInPool: string | number | bigint, amountToWithdraw: string | number | bigint, externalAddress: string, dataHash: string, leaves: string[]): Promise<{
         proof: string;
-        publicInputs: string[];
+        publicInputs: unknown[];
         newCommitment: string;
         newNullifier: string;
         rootHash: string;
@@ -128,4 +159,4 @@ declare class PrivacyProtocolSDK {
     getLeaves(fromBlock?: number): Promise<string[]>;
 }
 
-export { type ActionRequest as A, DEFAULT_PRIVACY_PROTOCOL_CIRCUIT as D, type ExecutionResult as E, PrivacyProtocolSDK as P, type DepositResult as a, type PrivateTransactionDetails as b };
+export { type ActionRequest as A, DEFAULT_PRIVACY_PROTOCOL_CIRCUIT as D, type ExecutionCallOptions as E, PrivacyProtocolSDK as P, type RelayerTransportConfig as R, type DepositResult as a, type ExecutionResult as b, type PrivacyProtocolSDKOptions as c, type PrivateTransactionDetails as d };

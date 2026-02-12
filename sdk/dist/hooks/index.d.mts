@@ -1,4 +1,4 @@
-import { P as PrivacyProtocolSDK, a as DepositResult, E as ExecutionResult, b as PrivateTransactionDetails } from '../PrivacyProtocolSDK-CpYDmC1y.mjs';
+import { P as PrivacyProtocolSDK, R as RelayerTransportConfig, a as DepositResult, E as ExecutionCallOptions, b as ExecutionResult, d as PrivateTransactionDetails } from '../PrivacyProtocolSDK-BPTBHIYn.mjs';
 import { Provider, Signer, ethers } from 'ethers';
 
 type AmountLike = string | number | bigint;
@@ -34,6 +34,7 @@ interface UsePrivacyProtocolOptions {
     provider: Provider | null;
     signer?: Signer | null;
     circuit?: any;
+    relayer?: RelayerTransportConfig;
 }
 interface PrivacyProtocolContext {
     sdk: PrivacyProtocolSDK | null;
@@ -91,6 +92,7 @@ interface ExecuteActionArgs {
     leaves?: string[];
     fromBlock?: number;
     signer?: Signer;
+    executionOptions?: ExecutionCallOptions;
 }
 interface UseExecuteActionOptions extends UsePrivacyProtocolOptions {
     onSuccess?: (result: ExecutionResult, newNote: PrivacyNote) => void;
@@ -131,6 +133,7 @@ interface WithdrawArgs {
     leaves?: string[];
     fromBlock?: number;
     signer?: Signer;
+    executionOptions?: ExecutionCallOptions;
 }
 interface UseWithdrawOptions extends UsePrivacyProtocolOptions {
     onSuccess?: (result: ExecutionResult, newNote: PrivacyNote) => void;

@@ -22,10 +22,14 @@ export interface PrivateTransactionMetadata {
   to?: string | null;
   proxyAddress?: string;
   noteCommitment?: string;
+  relayRequestId?: string;
+  relayQueueLength?: number;
+  relayGasEstimate?: string;
+  relayMinRequiredFeeWei?: string;
 }
 
 export interface PrivateTransactionEvent {
-  hash: `0x${string}`;
+  hash: string;
   source: DemoTransactionSource;
   methodHint: string;
   parametersHint: string;

@@ -1,5 +1,4 @@
-export { A as ActionRequest, D as DEFAULT_PRIVACY_PROTOCOL_CIRCUIT, a as DepositResult, E as ExecutionResult, P as PrivacyProtocolSDK, b as PrivateTransactionDetails, P as default } from './PrivacyProtocolSDK-CpYDmC1y.mjs';
-import { Fr } from '@aztec/bb.js';
+export { A as ActionRequest, D as DEFAULT_PRIVACY_PROTOCOL_CIRCUIT, a as DepositResult, E as ExecutionCallOptions, b as ExecutionResult, P as PrivacyProtocolSDK, c as PrivacyProtocolSDKOptions, d as PrivateTransactionDetails, R as RelayerTransportConfig, P as default } from './PrivacyProtocolSDK-BPTBHIYn.mjs';
 import 'ethers';
 
 interface MerkleProof {
@@ -26,6 +25,11 @@ declare class PoseidonTree {
 }
 declare function merkleTree(leaves: string[]): Promise<PoseidonTree>;
 
+interface BbFr {
+    toString(): string;
+    toBuffer(): Uint8Array;
+}
+
 /**
  * Generates a commitment for a given amount.
  */
@@ -33,23 +37,23 @@ declare function generateCommitment(amount: string | number | bigint): Promise<C
 /**
  * Computes the nullifier hash.
  */
-declare function computeNullifierHash(nullifier: Fr | string): Promise<Fr>;
+declare function computeNullifierHash(nullifier: BbFr | string): Promise<BbFr>;
 /**
  * Computes a new commitment.
  */
-declare function computeCommitment(nullifier: Fr | string, secret: Fr | string, amount: string | number | bigint): Promise<Fr>;
+declare function computeCommitment(nullifier: BbFr | string, secret: BbFr | string, amount: string | number | bigint): Promise<BbFr>;
 /**
  * Computes the action context hash from external call address and data hash.
  */
-declare function computeActionContextHash(externalAddress: Fr | string, dataHash: Fr | string): Promise<Fr>;
+declare function computeActionContextHash(externalAddress: BbFr | string, dataHash: BbFr | string): Promise<BbFr>;
 /**
  * Computes the new output commitment bound to action context.
  */
-declare function computeContextBoundCommitment(newNullifier: Fr | string, secret: Fr | string, amountLeft: string | number | bigint, externalAddress: Fr | string, dataHash: Fr | string): Promise<Fr>;
+declare function computeContextBoundCommitment(newNullifier: BbFr | string, secret: BbFr | string, amountLeft: string | number | bigint, externalAddress: BbFr | string, dataHash: BbFr | string): Promise<BbFr>;
 interface CommitmentData {
-    secret: Fr;
-    nullifier: Fr;
-    commitment: Fr;
+    secret: BbFr;
+    nullifier: BbFr;
+    commitment: BbFr;
 }
 
 type utils_CommitmentData = CommitmentData;

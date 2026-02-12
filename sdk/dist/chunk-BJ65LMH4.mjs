@@ -1,186 +1,6 @@
-"use strict";
-var __create = Object.create;
-var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getProtoOf = Object.getPrototypeOf;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
-};
-var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
-  }
-  return to;
-};
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-  // If the importer is in node compatibility mode or this is not an ESM
-  // file that has been converted to a CommonJS file using a Babel-
-  // compatible transform (i.e. "__esModule" has not been set), then set
-  // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
-  mod
-));
-var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-
-// hooks/index.ts
-var hooks_exports = {};
-__export(hooks_exports, {
-  useCommitments: () => useCommitments,
-  useDeposit: () => useDeposit,
-  useExecuteAction: () => useExecuteAction,
-  useLocalNotes: () => useLocalNotes,
-  usePrivacyProtocol: () => usePrivacyProtocol,
-  usePrivateTransactionDetails: () => usePrivateTransactionDetails,
-  useWithdraw: () => useWithdraw
-});
-module.exports = __toCommonJS(hooks_exports);
-
-// hooks/useLocalNotes.ts
-var import_react = require("react");
-var DEFAULT_STORAGE_KEY = "privacy-protocol:notes";
-function readNotes(storageKey) {
-  if (typeof window === "undefined") {
-    return [];
-  }
-  try {
-    const raw = window.localStorage.getItem(storageKey);
-    if (!raw) {
-      return [];
-    }
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-function writeNotes(storageKey, notes) {
-  if (typeof window === "undefined") {
-    return;
-  }
-  window.localStorage.setItem(storageKey, JSON.stringify(notes));
-}
-function useLocalNotes(options = {}) {
-  const storageKey = options.storageKey ?? DEFAULT_STORAGE_KEY;
-  const [notes, setNotes] = (0, import_react.useState)([]);
-  const [isHydrated, setIsHydrated] = (0, import_react.useState)(false);
-  (0, import_react.useEffect)(() => {
-    setNotes(readNotes(storageKey));
-    setIsHydrated(true);
-  }, [storageKey]);
-  const replaceNotes = (0, import_react.useCallback)(
-    (nextNotes) => {
-      setNotes(nextNotes);
-      writeNotes(storageKey, nextNotes);
-    },
-    [storageKey]
-  );
-  const addNote = (0, import_react.useCallback)(
-    (note) => {
-      setNotes((currentNotes) => {
-        const nextNotes = [note, ...currentNotes];
-        writeNotes(storageKey, nextNotes);
-        return nextNotes;
-      });
-    },
-    [storageKey]
-  );
-  const upsertNote = (0, import_react.useCallback)(
-    (note) => {
-      setNotes((currentNotes) => {
-        const currentIndex = currentNotes.findIndex(
-          (existing) => existing.id === note.id
-        );
-        if (currentIndex === -1) {
-          const nextNotes2 = [note, ...currentNotes];
-          writeNotes(storageKey, nextNotes2);
-          return nextNotes2;
-        }
-        const nextNotes = [...currentNotes];
-        nextNotes[currentIndex] = note;
-        writeNotes(storageKey, nextNotes);
-        return nextNotes;
-      });
-    },
-    [storageKey]
-  );
-  const removeNote = (0, import_react.useCallback)(
-    (noteId) => {
-      setNotes((currentNotes) => {
-        const nextNotes = currentNotes.filter(
-          (note) => note.id !== noteId
-        );
-        writeNotes(storageKey, nextNotes);
-        return nextNotes;
-      });
-    },
-    [storageKey]
-  );
-  const clearNotes = (0, import_react.useCallback)(() => {
-    replaceNotes([]);
-  }, [replaceNotes]);
-  const getNoteByCommitment = (0, import_react.useCallback)(
-    (commitment) => {
-      return notes.find((note) => note.commitment === commitment) ?? null;
-    },
-    [notes]
-  );
-  return {
-    notes,
-    isHydrated,
-    addNote,
-    upsertNote,
-    removeNote,
-    clearNotes,
-    getNoteByCommitment
-  };
-}
-
-// hooks/useCommitments.ts
-var import_react3 = require("react");
-
-// hooks/helpers.ts
-function toError(error) {
-  if (error instanceof Error) {
-    return error;
-  }
-  return new Error(String(error));
-}
-function toAmountString(amount) {
-  if (typeof amount === "bigint") {
-    return amount.toString();
-  }
-  return String(amount);
-}
-async function resolveChainId(signer) {
-  if (!signer?.provider) {
-    return void 0;
-  }
-  const network = await signer.provider.getNetwork();
-  return Number(network.chainId);
-}
-function buildPrivacyNote(args) {
-  return {
-    id: args.id ?? args.commitment,
-    poolAddress: args.poolAddress,
-    token: args.token,
-    amount: toAmountString(args.amount),
-    secret: args.secret,
-    nullifier: args.nullifier,
-    commitment: args.commitment,
-    txHash: args.txHash,
-    chainId: args.chainId,
-    createdAt: Date.now(),
-    metadata: args.metadata
-  };
-}
-
-// hooks/usePrivacyProtocol.ts
-var import_react2 = require("react");
+import {
+  __export
+} from "./chunk-D57E6H3M.mjs";
 
 // core/polyfills.ts
 function assertOffset(target, offset) {
@@ -296,7 +116,7 @@ installBufferBigIntPolyfill();
 var bbModulePromise = null;
 async function loadBb() {
   if (!bbModulePromise) {
-    bbModulePromise = import("@aztec/bb.js");
+    bbModulePromise = import("./browser-OLXD6FMT.mjs");
   }
   return bbModulePromise;
 }
@@ -316,6 +136,9 @@ async function getBb() {
     const bbModule = await loadBb();
     const BarretenbergCtor = bbModule.Barretenberg;
     bbInstance = await BarretenbergCtor.new();
+  }
+  if (!bbInstance) {
+    throw new Error("Failed to initialize Barretenberg");
   }
   return bbInstance;
 }
@@ -496,13 +319,21 @@ async function merkleTree(leaves) {
 }
 
 // core/PrivacyProtocolSDK.ts
-var import_ethers = require("ethers");
-var import_noir_js = require("@noir-lang/noir_js");
+import { ethers } from "ethers";
+import { Noir } from "@noir-lang/noir_js";
 
 // core/circuits.json
 var circuits_default = { noir_version: "1.0.0-beta.11+fd3925aaaeb76c76319f44590d135498ef41ea6c", hash: "17408340284828399570", abi: { parameters: [{ name: "root_hash", type: { kind: "field" }, visibility: "public" }, { name: "nullifier_hash", type: { kind: "field" }, visibility: "public" }, { name: "recipient_address", type: { kind: "field" }, visibility: "public" }, { name: "data_hash", type: { kind: "field" }, visibility: "public" }, { name: "amount_to_withdraw", type: { kind: "field" }, visibility: "public" }, { name: "new_commitment", type: { kind: "field" }, visibility: "public" }, { name: "nullifier", type: { kind: "field" }, visibility: "private" }, { name: "new_nullifier", type: { kind: "field" }, visibility: "private" }, { name: "secret", type: { kind: "field" }, visibility: "private" }, { name: "amount_in_pool", type: { kind: "field" }, visibility: "private" }, { name: "amount_left", type: { kind: "field" }, visibility: "private" }, { name: "merkle_proof", type: { kind: "array", length: 20, type: { kind: "field" } }, visibility: "private" }, { name: "is_even", type: { kind: "array", length: 20, type: { kind: "boolean" } }, visibility: "private" }], return_type: null, error_types: { "1919566133504053500": { error_kind: "string", string: "Invalid new commitment" }, "6485997221020871071": { error_kind: "string", string: "call to assert_max_bit_size" }, "11311738024492343678": { error_kind: "string", string: "Invalid amounts" }, "13235270398509308954": { error_kind: "string", string: "Invalid nullifier hash" }, "13410961693771009187": { error_kind: "string", string: "Invalid merkle proof" } } }, bytecode: "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", debug_symbols: "tdfLbqtADAbgd2GdxXguHruvcnRU0ZRWkRCJaFLpqOq7nyH9TZIFCIG6shPqbyieS/iqXpuXy/vzoXs7flRPf76ql/7Qtof35/a4r8+HY1e+/freVfbx+dw3Tfmqurteqk5133Tn6qm7tO2u+qzby/WPPk51d43nui9X3a5qutcSC/h2aJsh+97dqt10aQoJxYl1LE+P9TRTnwPqmW7DkyweX6LVez81fvi98Tlkq2eZGj/93vjZCepzdFPjz92/uk31WQn1EtJUvU7Xh+RRHzTf6vVx/szcQHDB7qCkuoogskkUKPlVBLP1MXCmdYSXkbjvhS7thWS1Xuj0Wkxbm8HbH8Mcobd+Kus6YpzUJZUVT1LJHoSmsGJVkPN2B+TSZC88beyF95t7MUss68U8sbUX5NT+DyKe3KP83ITI47OUu+VNi4E4zofo8xogMdsxKTIJbN0nw/YdapZYNh3mic3TgcYTk7zjNYvTyyiEOLk4w9aNMvDmU2uWWHZqhe3b9WJC0ipi4bT61R2fyvFrkyK6xz3/b/lU7w/9w2/vyruyYneVp7IplODLb6kSQjl8S4jDNCsxIfLwm67EjCiIWoxyV2GwihIIsWih1IWAGBETIiNmREHUnxgdIiHCi/AivAgvwovwIrwIL8FL8BK8BC/BS/ASvAQvwUvwGB7DY3gMj+ExPIbH8Bgew8vwMrwML8PL8DK8DC/Dy/AyPIEn8ASewBN4Ak/gCTyBJ/AUnsJTeApP4Sk8hafwFJ7CI+csIUu8JcGSaEmyhC3JloglJpPJZDKZTCaTyWQymUwmk8lksjfZm+xN9iZ7k73J3mRvsjfZmxxMDiZfF1AckkGWIYmWpOE8HxK2pMhxWPKfdX+oX9oG79Zvl25/96p9/neyK/YyfuqP++b10jfD1nC9VjaL/w==", file_map: { "18": { source: 'pub mod bn254;\nuse crate::{runtime::is_unconstrained, static_assert};\nuse bn254::lt as bn254_lt;\n\nimpl Field {\n    /// Asserts that `self` can be represented in `bit_size` bits.\n    ///\n    /// # Failures\n    /// Causes a constraint failure for `Field` values exceeding `2^{bit_size}`.\n    // docs:start:assert_max_bit_size\n    pub fn assert_max_bit_size<let BIT_SIZE: u32>(self) {\n        // docs:end:assert_max_bit_size\n        static_assert(\n            BIT_SIZE < modulus_num_bits() as u32,\n            "BIT_SIZE must be less than modulus_num_bits",\n        );\n        __assert_max_bit_size(self, BIT_SIZE);\n    }\n\n    /// Decomposes `self` into its little endian bit decomposition as a `[u1; N]` array.\n    /// This slice will be zero padded should not all bits be necessary to represent `self`.\n    ///\n    /// # Failures\n    /// Causes a constraint failure for `Field` values exceeding `2^N` as the resulting slice will not\n    /// be able to represent the original `Field`.\n    ///\n    /// # Safety\n    /// The bit decomposition returned is canonical and is guaranteed to not overflow the modulus.\n    // docs:start:to_le_bits\n    pub fn to_le_bits<let N: u32>(self: Self) -> [u1; N] {\n        // docs:end:to_le_bits\n        let bits = __to_le_bits(self);\n\n        if !is_unconstrained() {\n            // Ensure that the byte decomposition does not overflow the modulus\n            let p = modulus_le_bits();\n            assert(bits.len() <= p.len());\n            let mut ok = bits.len() != p.len();\n            for i in 0..N {\n                if !ok {\n                    if (bits[N - 1 - i] != p[N - 1 - i]) {\n                        assert(p[N - 1 - i] == 1);\n                        ok = true;\n                    }\n                }\n            }\n            assert(ok);\n        }\n        bits\n    }\n\n    /// Decomposes `self` into its big endian bit decomposition as a `[u1; N]` array.\n    /// This array will be zero padded should not all bits be necessary to represent `self`.\n    ///\n    /// # Failures\n    /// Causes a constraint failure for `Field` values exceeding `2^N` as the resulting slice will not\n    /// be able to represent the original `Field`.\n    ///\n    /// # Safety\n    /// The bit decomposition returned is canonical and is guaranteed to not overflow the modulus.\n    // docs:start:to_be_bits\n    pub fn to_be_bits<let N: u32>(self: Self) -> [u1; N] {\n        // docs:end:to_be_bits\n        let bits = __to_be_bits(self);\n\n        if !is_unconstrained() {\n            // Ensure that the decomposition does not overflow the modulus\n            let p = modulus_be_bits();\n            assert(bits.len() <= p.len());\n            let mut ok = bits.len() != p.len();\n            for i in 0..N {\n                if !ok {\n                    if (bits[i] != p[i]) {\n                        assert(p[i] == 1);\n                        ok = true;\n                    }\n                }\n            }\n            assert(ok);\n        }\n        bits\n    }\n\n    /// Decomposes `self` into its little endian byte decomposition as a `[u8;N]` array\n    /// This array will be zero padded should not all bytes be necessary to represent `self`.\n    ///\n    /// # Failures\n    ///  The length N of the array must be big enough to contain all the bytes of the \'self\',\n    ///  and no more than the number of bytes required to represent the field modulus\n    ///\n    /// # Safety\n    /// The result is ensured to be the canonical decomposition of the field element\n    // docs:start:to_le_bytes\n    pub fn to_le_bytes<let N: u32>(self: Self) -> [u8; N] {\n        // docs:end:to_le_bytes\n        static_assert(\n            N <= modulus_le_bytes().len(),\n            "N must be less than or equal to modulus_le_bytes().len()",\n        );\n        // Compute the byte decomposition\n        let bytes = self.to_le_radix(256);\n\n        if !is_unconstrained() {\n            // Ensure that the byte decomposition does not overflow the modulus\n            let p = modulus_le_bytes();\n            assert(bytes.len() <= p.len());\n            let mut ok = bytes.len() != p.len();\n            for i in 0..N {\n                if !ok {\n                    if (bytes[N - 1 - i] != p[N - 1 - i]) {\n                        assert(bytes[N - 1 - i] < p[N - 1 - i]);\n                        ok = true;\n                    }\n                }\n            }\n            assert(ok);\n        }\n        bytes\n    }\n\n    /// Decomposes `self` into its big endian byte decomposition as a `[u8;N]` array of length required to represent the field modulus\n    /// This array will be zero padded should not all bytes be necessary to represent `self`.\n    ///\n    /// # Failures\n    ///  The length N of the array must be big enough to contain all the bytes of the \'self\',\n    ///  and no more than the number of bytes required to represent the field modulus\n    ///\n    /// # Safety\n    /// The result is ensured to be the canonical decomposition of the field element\n    // docs:start:to_be_bytes\n    pub fn to_be_bytes<let N: u32>(self: Self) -> [u8; N] {\n        // docs:end:to_be_bytes\n        static_assert(\n            N <= modulus_le_bytes().len(),\n            "N must be less than or equal to modulus_le_bytes().len()",\n        );\n        // Compute the byte decomposition\n        let bytes = self.to_be_radix(256);\n\n        if !is_unconstrained() {\n            // Ensure that the byte decomposition does not overflow the modulus\n            let p = modulus_be_bytes();\n            assert(bytes.len() <= p.len());\n            let mut ok = bytes.len() != p.len();\n            for i in 0..N {\n                if !ok {\n                    if (bytes[i] != p[i]) {\n                        assert(bytes[i] < p[i]);\n                        ok = true;\n                    }\n                }\n            }\n            assert(ok);\n        }\n        bytes\n    }\n\n    fn to_le_radix<let N: u32>(self: Self, radix: u32) -> [u8; N] {\n        // Brillig does not need an immediate radix\n        if !crate::runtime::is_unconstrained() {\n            static_assert(1 < radix, "radix must be greater than 1");\n            static_assert(radix <= 256, "radix must be less than or equal to 256");\n            static_assert(radix & (radix - 1) == 0, "radix must be a power of 2");\n        }\n        __to_le_radix(self, radix)\n    }\n\n    fn to_be_radix<let N: u32>(self: Self, radix: u32) -> [u8; N] {\n        // Brillig does not need an immediate radix\n        if !crate::runtime::is_unconstrained() {\n            static_assert(1 < radix, "radix must be greater than 1");\n            static_assert(radix <= 256, "radix must be less than or equal to 256");\n            static_assert(radix & (radix - 1) == 0, "radix must be a power of 2");\n        }\n        __to_be_radix(self, radix)\n    }\n\n    // Returns self to the power of the given exponent value.\n    // Caution: we assume the exponent fits into 32 bits\n    // using a bigger bit size impacts negatively the performance and should be done only if the exponent does not fit in 32 bits\n    pub fn pow_32(self, exponent: Field) -> Field {\n        let mut r: Field = 1;\n        let b: [u1; 32] = exponent.to_le_bits();\n\n        for i in 1..33 {\n            r *= r;\n            r = (b[32 - i] as Field) * (r * self) + (1 - b[32 - i] as Field) * r;\n        }\n        r\n    }\n\n    // Parity of (prime) Field element, i.e. sgn0(x mod p) = 0 if x `elem` {0, ..., p-1} is even, otherwise sgn0(x mod p) = 1.\n    pub fn sgn0(self) -> u1 {\n        self as u1\n    }\n\n    pub fn lt(self, another: Field) -> bool {\n        if crate::compat::is_bn254() {\n            bn254_lt(self, another)\n        } else {\n            lt_fallback(self, another)\n        }\n    }\n\n    /// Convert a little endian byte array to a field element.\n    /// If the provided byte array overflows the field modulus then the Field will silently wrap around.\n    pub fn from_le_bytes<let N: u32>(bytes: [u8; N]) -> Field {\n        static_assert(\n            N <= modulus_le_bytes().len(),\n            "N must be less than or equal to modulus_le_bytes().len()",\n        );\n        let mut v = 1;\n        let mut result = 0;\n\n        for i in 0..N {\n            result += (bytes[i] as Field) * v;\n            v = v * 256;\n        }\n        result\n    }\n\n    /// Convert a big endian byte array to a field element.\n    /// If the provided byte array overflows the field modulus then the Field will silently wrap around.\n    pub fn from_be_bytes<let N: u32>(bytes: [u8; N]) -> Field {\n        let mut v = 1;\n        let mut result = 0;\n\n        for i in 0..N {\n            result += (bytes[N - 1 - i] as Field) * v;\n            v = v * 256;\n        }\n        result\n    }\n}\n\n#[builtin(apply_range_constraint)]\nfn __assert_max_bit_size(value: Field, bit_size: u32) {}\n\n// `_radix` must be less than 256\n#[builtin(to_le_radix)]\nfn __to_le_radix<let N: u32>(value: Field, radix: u32) -> [u8; N] {}\n\n// `_radix` must be less than 256\n#[builtin(to_be_radix)]\nfn __to_be_radix<let N: u32>(value: Field, radix: u32) -> [u8; N] {}\n\n/// Decomposes `self` into its little endian bit decomposition as a `[u1; N]` array.\n/// This slice will be zero padded should not all bits be necessary to represent `self`.\n///\n/// # Failures\n/// Causes a constraint failure for `Field` values exceeding `2^N` as the resulting slice will not\n/// be able to represent the original `Field`.\n///\n/// # Safety\n/// Values of `N` equal to or greater than the number of bits necessary to represent the `Field` modulus\n/// (e.g. 254 for the BN254 field) allow for multiple bit decompositions. This is due to how the `Field` will\n/// wrap around due to overflow when verifying the decomposition.\n#[builtin(to_le_bits)]\nfn __to_le_bits<let N: u32>(value: Field) -> [u1; N] {}\n\n/// Decomposes `self` into its big endian bit decomposition as a `[u1; N]` array.\n/// This array will be zero padded should not all bits be necessary to represent `self`.\n///\n/// # Failures\n/// Causes a constraint failure for `Field` values exceeding `2^N` as the resulting slice will not\n/// be able to represent the original `Field`.\n///\n/// # Safety\n/// Values of `N` equal to or greater than the number of bits necessary to represent the `Field` modulus\n/// (e.g. 254 for the BN254 field) allow for multiple bit decompositions. This is due to how the `Field` will\n/// wrap around due to overflow when verifying the decomposition.\n#[builtin(to_be_bits)]\nfn __to_be_bits<let N: u32>(value: Field) -> [u1; N] {}\n\n#[builtin(modulus_num_bits)]\npub comptime fn modulus_num_bits() -> u64 {}\n\n#[builtin(modulus_be_bits)]\npub comptime fn modulus_be_bits() -> [u1] {}\n\n#[builtin(modulus_le_bits)]\npub comptime fn modulus_le_bits() -> [u1] {}\n\n#[builtin(modulus_be_bytes)]\npub comptime fn modulus_be_bytes() -> [u8] {}\n\n#[builtin(modulus_le_bytes)]\npub comptime fn modulus_le_bytes() -> [u8] {}\n\n/// An unconstrained only built in to efficiently compare fields.\n#[builtin(field_less_than)]\nunconstrained fn __field_less_than(x: Field, y: Field) -> bool {}\n\npub(crate) unconstrained fn field_less_than(x: Field, y: Field) -> bool {\n    __field_less_than(x, y)\n}\n\n// Convert a 32 byte array to a field element by modding\npub fn bytes32_to_field(bytes32: [u8; 32]) -> Field {\n    // Convert it to a field element\n    let mut v = 1;\n    let mut high = 0 as Field;\n    let mut low = 0 as Field;\n\n    for i in 0..16 {\n        high = high + (bytes32[15 - i] as Field) * v;\n        low = low + (bytes32[16 + 15 - i] as Field) * v;\n        v = v * 256;\n    }\n    // Abuse that a % p + b % p = (a + b) % p and that low < p\n    low + high * v\n}\n\nfn lt_fallback(x: Field, y: Field) -> bool {\n    if is_unconstrained() {\n        // Safety: unconstrained context\n        unsafe {\n            field_less_than(x, y)\n        }\n    } else {\n        let x_bytes: [u8; 32] = x.to_le_bytes();\n        let y_bytes: [u8; 32] = y.to_le_bytes();\n        let mut x_is_lt = false;\n        let mut done = false;\n        for i in 0..32 {\n            if (!done) {\n                let x_byte = x_bytes[32 - 1 - i] as u8;\n                let y_byte = y_bytes[32 - 1 - i] as u8;\n                let bytes_match = x_byte == y_byte;\n                if !bytes_match {\n                    x_is_lt = x_byte < y_byte;\n                    done = true;\n                }\n            }\n        }\n        x_is_lt\n    }\n}\n\nmod tests {\n    use crate::{panic::panic, runtime};\n    use super::field_less_than;\n\n    #[test]\n    // docs:start:to_be_bits_example\n    fn test_to_be_bits() {\n        let field = 2;\n        let bits: [u1; 8] = field.to_be_bits();\n        assert_eq(bits, [0, 0, 0, 0, 0, 0, 1, 0]);\n    }\n    // docs:end:to_be_bits_example\n\n    #[test]\n    // docs:start:to_le_bits_example\n    fn test_to_le_bits() {\n        let field = 2;\n        let bits: [u1; 8] = field.to_le_bits();\n        assert_eq(bits, [0, 1, 0, 0, 0, 0, 0, 0]);\n    }\n    // docs:end:to_le_bits_example\n\n    #[test]\n    // docs:start:to_be_bytes_example\n    fn test_to_be_bytes() {\n        let field = 2;\n        let bytes: [u8; 8] = field.to_be_bytes();\n        assert_eq(bytes, [0, 0, 0, 0, 0, 0, 0, 2]);\n        assert_eq(Field::from_be_bytes::<8>(bytes), field);\n    }\n    // docs:end:to_be_bytes_example\n\n    #[test]\n    // docs:start:to_le_bytes_example\n    fn test_to_le_bytes() {\n        let field = 2;\n        let bytes: [u8; 8] = field.to_le_bytes();\n        assert_eq(bytes, [2, 0, 0, 0, 0, 0, 0, 0]);\n        assert_eq(Field::from_le_bytes::<8>(bytes), field);\n    }\n    // docs:end:to_le_bytes_example\n\n    #[test]\n    // docs:start:to_be_radix_example\n    fn test_to_be_radix() {\n        // 259, in base 256, big endian, is [1, 3].\n        // i.e. 3 * 256^0 + 1 * 256^1\n        let field = 259;\n\n        // The radix (in this example, 256) must be a power of 2.\n        // The length of the returned byte array can be specified to be\n        // >= the amount of space needed.\n        let bytes: [u8; 8] = field.to_be_radix(256);\n        assert_eq(bytes, [0, 0, 0, 0, 0, 0, 1, 3]);\n        assert_eq(Field::from_be_bytes::<8>(bytes), field);\n    }\n    // docs:end:to_be_radix_example\n\n    #[test]\n    // docs:start:to_le_radix_example\n    fn test_to_le_radix() {\n        // 259, in base 256, little endian, is [3, 1].\n        // i.e. 3 * 256^0 + 1 * 256^1\n        let field = 259;\n\n        // The radix (in this example, 256) must be a power of 2.\n        // The length of the returned byte array can be specified to be\n        // >= the amount of space needed.\n        let bytes: [u8; 8] = field.to_le_radix(256);\n        assert_eq(bytes, [3, 1, 0, 0, 0, 0, 0, 0]);\n        assert_eq(Field::from_le_bytes::<8>(bytes), field);\n    }\n    // docs:end:to_le_radix_example\n\n    #[test(should_fail_with = "radix must be greater than 1")]\n    fn test_to_le_radix_1() {\n        // this test should only fail in constrained mode\n        if !runtime::is_unconstrained() {\n            let field = 2;\n            let _: [u8; 8] = field.to_le_radix(1);\n        } else {\n            panic(f"radix must be greater than 1");\n        }\n    }\n\n    // TODO: Update this test to account for the Brillig restriction that the radix must be greater than 2\n    //#[test]\n    //fn test_to_le_radix_brillig_1() {\n    //    // this test should only fail in constrained mode\n    //    if runtime::is_unconstrained() {\n    //        let field = 1;\n    //        let out: [u8; 8] = field.to_le_radix(1);\n    //        crate::println(out);\n    //        let expected = [0; 8];\n    //        assert(out == expected, "unexpected result");\n    //    }\n    //}\n\n    #[test(should_fail_with = "radix must be a power of 2")]\n    fn test_to_le_radix_3() {\n        // this test should only fail in constrained mode\n        if !runtime::is_unconstrained() {\n            let field = 2;\n            let _: [u8; 8] = field.to_le_radix(3);\n        } else {\n            panic(f"radix must be a power of 2");\n        }\n    }\n\n    #[test]\n    fn test_to_le_radix_brillig_3() {\n        // this test should only fail in constrained mode\n        if runtime::is_unconstrained() {\n            let field = 1;\n            let out: [u8; 8] = field.to_le_radix(3);\n            let mut expected = [0; 8];\n            expected[0] = 1;\n            assert(out == expected, "unexpected result");\n        }\n    }\n\n    #[test(should_fail_with = "radix must be less than or equal to 256")]\n    fn test_to_le_radix_512() {\n        // this test should only fail in constrained mode\n        if !runtime::is_unconstrained() {\n            let field = 2;\n            let _: [u8; 8] = field.to_le_radix(512);\n        } else {\n            panic(f"radix must be less than or equal to 256")\n        }\n    }\n\n    #[test(should_fail_with = "Field failed to decompose into specified 16 limbs")]\n    unconstrained fn not_enough_limbs_brillig() {\n        let _: [u8; 16] = 0x100000000000000000000000000000000.to_le_bytes();\n    }\n\n    #[test(should_fail_with = "Field failed to decompose into specified 16 limbs")]\n    fn not_enough_limbs() {\n        let _: [u8; 16] = 0x100000000000000000000000000000000.to_le_bytes();\n    }\n\n    // TODO: Update this test to account for the Brillig restriction that the radix must be less than 512\n    //#[test]\n    //fn test_to_le_radix_brillig_512() {\n    //    // this test should only fail in constrained mode\n    //    if runtime::is_unconstrained() {\n    //        let field = 1;\n    //        let out: [u8; 8] = field.to_le_radix(512);\n    //        let mut expected = [0; 8];\n    //        expected[0] = 1;\n    //        assert(out == expected, "unexpected result");\n    //    }\n    //}\n\n    #[test]\n    unconstrained fn test_field_less_than() {\n        assert(field_less_than(0, 1));\n        assert(field_less_than(0, 0x100));\n        assert(field_less_than(0x100, 0 - 1));\n        assert(!field_less_than(0 - 1, 0));\n    }\n}\n', path: "std/field/mod.nr" }, "50": { source: 'use dep::poseidon::poseidon2::Poseidon2::hash;\n\nmod merkle_tree;\n\nfn main(\n    //public inputs\n    root_hash: pub Field,\n    nullifier_hash: pub Field,\n    recipient_address: pub Field,\n    data_hash: pub Field, // 248-bit truncated Keccak256 hash of action context\n    amount_to_withdraw: pub Field,\n    new_commitment: pub Field,\n    //private inputs\n    nullifier: Field,\n    new_nullifier: Field,\n    secret: Field,\n    amount_in_pool: Field,\n    amount_left: Field,\n    merkle_proof: [Field; 20],\n    is_even: [bool; 20],\n) {\n    amount_in_pool.assert_max_bit_size::<120>();\n    amount_to_withdraw.assert_max_bit_size::<120>();\n    amount_left.assert_max_bit_size::<120>();\n    assert(amount_in_pool == amount_to_withdraw + amount_left, "Invalid amounts");\n\n    let commitment: Field = hash([nullifier, secret, amount_in_pool], 3);\n\n    let computed_nullifier_hash: Field = hash([nullifier], 1);\n    assert(computed_nullifier_hash == nullifier_hash, "Invalid nullifier hash");\n\n    let action_context_hash: Field = hash([recipient_address, data_hash], 2);\n\n    let computed_merkle_root = merkle_tree::compute_merkle_root(commitment, merkle_proof, is_even);\n    assert(computed_merkle_root == root_hash, "Invalid merkle proof");\n\n    let computed_new_commitment: Field =\n        hash([new_nullifier, secret, amount_left, action_context_hash], 4);\n    assert(computed_new_commitment == new_commitment, "Invalid new commitment");\n}\n', path: "/Users/obaloluwa/Documents/Personal Projects/privacy-protocol/circuits/src/main.nr" }, "51": { source: "use dep::poseidon::poseidon2::Poseidon2::hash;\n\npub(crate) fn compute_merkle_root(\n    leaf: Field,\n    merkle_proof: [Field; 20],\n    is_even: [bool; 20],\n) -> Field {\n    //mutable variable to store hash for the current level we are working on\n    let mut current_hash: Field = leaf;\n\n    //iterate through the levels\n    for i in 0..20 {\n        let (left, right) = if is_even[i] {\n            (current_hash, merkle_proof[i])\n        } else {\n            (merkle_proof[i], current_hash)\n        };\n\n        //compute hash for current level\n        current_hash = hash([left, right], 2);\n    }\n\n    current_hash\n}\n", path: "/Users/obaloluwa/Documents/Personal Projects/privacy-protocol/circuits/src/merkle_tree.nr" }, "59": { source: "use std::default::Default;\nuse std::hash::Hasher;\n\ncomptime global RATE: u32 = 3;\n\npub struct Poseidon2 {\n    cache: [Field; 3],\n    state: [Field; 4],\n    cache_size: u32,\n    squeeze_mode: bool, // 0 => absorb, 1 => squeeze\n}\n\nimpl Poseidon2 {\n    #[no_predicates]\n    pub fn hash<let N: u32>(input: [Field; N], message_size: u32) -> Field {\n        Poseidon2::hash_internal(input, message_size)\n    }\n\n    pub(crate) fn new(iv: Field) -> Poseidon2 {\n        let mut result =\n            Poseidon2 { cache: [0; 3], state: [0; 4], cache_size: 0, squeeze_mode: false };\n        result.state[RATE] = iv;\n        result\n    }\n\n    fn perform_duplex(&mut self) {\n        // add the cache into sponge state\n        self.state[0] += self.cache[0];\n        self.state[1] += self.cache[1];\n        self.state[2] += self.cache[2];\n        self.state = crate::poseidon2_permutation(self.state, 4);\n    }\n\n    fn absorb(&mut self, input: Field) {\n        assert(!self.squeeze_mode);\n        if self.cache_size == RATE {\n            // If we're absorbing, and the cache is full, apply the sponge permutation to compress the cache\n            self.perform_duplex();\n            self.cache[0] = input;\n            self.cache_size = 1;\n        } else {\n            // If we're absorbing, and the cache is not full, add the input into the cache\n            self.cache[self.cache_size] = input;\n            self.cache_size += 1;\n        }\n    }\n\n    fn squeeze(&mut self) -> Field {\n        assert(!self.squeeze_mode);\n        // If we're in absorb mode, apply sponge permutation to compress the cache.\n        self.perform_duplex();\n        self.squeeze_mode = true;\n\n        // Pop one item off the top of the permutation and return it.\n        self.state[0]\n    }\n\n    fn hash_internal<let N: u32>(input: [Field; N], in_len: u32) -> Field {\n        let two_pow_64 = 18446744073709551616;\n        let iv: Field = (in_len as Field) * two_pow_64;\n        let mut state = [0; 4];\n        state[RATE] = iv;\n\n        if std::runtime::is_unconstrained() {\n            for i in 0..(in_len / RATE) {\n                state[0] += input[i * RATE];\n                state[1] += input[i * RATE + 1];\n                state[2] += input[i * RATE + 2];\n                state = crate::poseidon2_permutation(state, 4);\n            }\n\n            // handle remaining elements after last full RATE-sized chunk\n            let num_extra_fields = in_len % RATE;\n            if num_extra_fields != 0 {\n                let remainder_start = in_len - num_extra_fields;\n                state[0] += input[remainder_start];\n                if num_extra_fields > 1 {\n                    state[1] += input[remainder_start + 1]\n                }\n            }\n        } else {\n            let mut states: [[Field; 4]; N / RATE + 1] = [[0; 4]; N / RATE + 1];\n            states[0] = state;\n\n            // process all full RATE-sized chunks, storing state after each permutation\n            for chunk_idx in 0..(N / RATE) {\n                for i in 0..RATE {\n                    state[i] += input[chunk_idx * RATE + i];\n                }\n                state = crate::poseidon2_permutation(state, 4);\n                states[chunk_idx + 1] = state;\n            }\n\n            // get state at the last full block before in_len\n            let first_partially_filled_chunk = in_len / RATE;\n            state = states[first_partially_filled_chunk];\n\n            // handle remaining elements after last full RATE-sized chunk\n            let remainder_start = (in_len / RATE) * RATE;\n            for j in 0..RATE {\n                let idx = remainder_start + j;\n                if idx < in_len {\n                    state[j] += input[idx];\n                }\n            }\n        }\n\n        // always run final permutation unless we just completed a full chunk\n        // still need to permute once if in_len is 0\n        if (in_len == 0) | (in_len % RATE != 0) {\n            state = crate::poseidon2_permutation(state, 4)\n        };\n\n        state[0]\n    }\n}\n\npub struct Poseidon2Hasher {\n    _state: [Field],\n}\n\nimpl Hasher for Poseidon2Hasher {\n    fn finish(self) -> Field {\n        let iv: Field = (self._state.len() as Field) * 18446744073709551616; // iv = (self._state.len() << 64)\n        let mut sponge = Poseidon2::new(iv);\n        for i in 0..self._state.len() {\n            sponge.absorb(self._state[i]);\n        }\n        sponge.squeeze()\n    }\n\n    fn write(&mut self, input: Field) {\n        self._state = self._state.push_back(input);\n    }\n}\n\nimpl Default for Poseidon2Hasher {\n    fn default() -> Self {\n        Poseidon2Hasher { _state: &[] }\n    }\n}\n", path: "/Users/obaloluwa/nargo/github.com/noir-lang/poseidon/v0.2.3/src/poseidon2.nr" } }, names: ["main"], brillig_names: [] };
 
 // core/utils.ts
+var utils_exports = {};
+__export(utils_exports, {
+  computeActionContextHash: () => computeActionContextHash,
+  computeCommitment: () => computeCommitment,
+  computeContextBoundCommitment: () => computeContextBoundCommitment,
+  computeNullifierHash: () => computeNullifierHash,
+  generateCommitment: () => generateCommitment
+});
 var bbInstance2;
 var frClass2;
 async function getFrClass2() {
@@ -527,6 +358,9 @@ async function getBb2() {
     const bbModule = await loadBb();
     const BarretenbergCtor = bbModule.Barretenberg;
     bbInstance2 = await BarretenbergCtor.new();
+  }
+  if (!bbInstance2) {
+    throw new Error("Failed to initialize Barretenberg");
   }
   return bbInstance2;
 }
@@ -582,6 +416,7 @@ async function computeContextBoundCommitment(newNullifier, secret, amountLeft, e
 
 // core/PrivacyProtocolSDK.ts
 var DEFAULT_PRIVACY_PROTOCOL_CIRCUIT = circuits_default;
+var ZERO_BYTES32 = "0x" + "00".repeat(32);
 var PRIVACY_PROTOCOL_POOL_ABI = [
   "function deposit(address token, uint256 amount, bytes32 commitment) external",
   "function withdraw(address token, address recipient, uint256 amount, bytes32 nullifierHash, bytes calldata proof, bytes32 rootHash, bytes32 calldataHash, bytes32 newCommitment) external",
@@ -591,11 +426,12 @@ var PRIVACY_PROTOCOL_POOL_ABI = [
   "event PrivacyProtocolPool__ActionExecuted(bytes32 nullifierHash, address proxy)"
 ];
 var PrivacyProtocolSDK = class {
-  constructor(provider, contractAddress, circuit = DEFAULT_PRIVACY_PROTOCOL_CIRCUIT) {
+  constructor(provider, contractAddress, circuit = DEFAULT_PRIVACY_PROTOCOL_CIRCUIT, options = {}) {
     this.provider = provider;
     this.contractAddress = contractAddress;
     this.circuit = circuit;
-    this.contract = new import_ethers.ethers.Contract(
+    this.options = options;
+    this.contract = new ethers.Contract(
       contractAddress,
       PRIVACY_PROTOCOL_POOL_ABI,
       provider
@@ -619,9 +455,16 @@ var PrivacyProtocolSDK = class {
       txHash: tx.hash
     };
   }
-  async withdraw(token, recipient, amount, secret, nullifier, amountInPool, leaves, signer) {
+  async withdraw(token, recipient, amount, secret, nullifier, amountInPool, leaves, signer, executionOptions = {}) {
     const dataHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
-    const { proof, newCommitment, newNullifier, rootHash, nullifierHash } = await this._generateProof(
+    const {
+      proof,
+      publicInputs,
+      newCommitment,
+      newNullifier,
+      rootHash,
+      nullifierHash
+    } = await this._generateProof(
       secret,
       nullifier,
       amountInPool,
@@ -630,33 +473,40 @@ var PrivacyProtocolSDK = class {
       dataHash,
       leaves
     );
-    const tx = await this.connect(signer).getFunction("withdraw")(
-      token,
-      recipient,
-      amount,
-      nullifierHash,
-      new Uint8Array(Buffer.from(proof.slice(2), "hex")),
-      // Convert hex string back to bytes for ethers
-      rootHash,
-      dataHash,
-      newCommitment
+    const relayResult = await this.submitToRelayer(
+      proof,
+      publicInputs,
+      executionOptions,
+      {
+        operation: "withdraw",
+        token,
+        recipient,
+        amount: amount.toString(),
+        nullifierHash,
+        rootHash,
+        newCommitment
+      }
     );
     return {
-      txHash: tx.hash,
+      txHash: `relay:${relayResult.request_id}`,
       newSecret: secret,
       newNullifier,
-      newCommitment
+      newCommitment,
+      relayRequestId: relayResult.request_id,
+      relayQueueLength: relayResult.queue_len,
+      relayGasEstimate: relayResult.gas_estimate,
+      relayMinRequiredFeeWei: relayResult.min_required_fee_wei
     };
   }
-  async executeAction(token, amount, target, data, actionId, secret, nullifier, amountInPool, leaves, signer) {
-    const expectedActionId = import_ethers.ethers.keccak256(import_ethers.ethers.getBytes(secret));
+  async executeAction(token, amount, target, data, actionId, secret, nullifier, amountInPool, leaves, signer, executionOptions = {}) {
+    const expectedActionId = ethers.keccak256(ethers.getBytes(secret));
     if (actionId.toLowerCase() !== expectedActionId.toLowerCase()) {
       throw new Error(
         "Invalid actionId: expected keccak256(secret) to allow proxy withdrawal"
       );
     }
-    const fullHash = import_ethers.ethers.keccak256(
-      import_ethers.ethers.concat([import_ethers.ethers.getBytes(actionId), import_ethers.ethers.getBytes(data)])
+    const fullHash = ethers.keccak256(
+      ethers.concat([ethers.getBytes(actionId), ethers.getBytes(data)])
     );
     const hashBigInt = BigInt(fullHash);
     const truncatedHashBigInt = hashBigInt >> 8n;
@@ -665,7 +515,14 @@ var PrivacyProtocolSDK = class {
       truncatedHashHex = "0" + truncatedHashHex;
     }
     const dataHash = "0x" + truncatedHashHex;
-    const { proof, newCommitment, newNullifier, rootHash, nullifierHash } = await this._generateProof(
+    const {
+      proof,
+      publicInputs,
+      newCommitment,
+      newNullifier,
+      rootHash,
+      nullifierHash
+    } = await this._generateProof(
       secret,
       nullifier,
       amountInPool,
@@ -674,41 +531,47 @@ var PrivacyProtocolSDK = class {
       dataHash,
       leaves
     );
-    const request = {
-      token,
-      amount,
-      target,
-      data,
-      actionId,
-      nullifierHash,
+    const relayResult = await this.submitToRelayer(
       proof,
-      rootHash,
-      newCommitment
-    };
-    const tx = await this.connect(signer).getFunction("executeAction")(request);
-    const receipt = await tx.wait();
-    let proxyAddress;
-    if (receipt && receipt.logs) {
-      for (const log of receipt.logs) {
-        try {
-          const parsedLog = this.contract.interface.parseLog(log);
-          if (parsedLog && parsedLog.name === "PrivacyProtocolPool__ActionExecuted") {
-            proxyAddress = parsedLog.args.proxy;
-            break;
-          }
-        } catch (e) {
-        }
+      publicInputs,
+      executionOptions,
+      {
+        operation: "executeAction",
+        token,
+        amount: amount.toString(),
+        target,
+        actionId,
+        nullifierHash,
+        rootHash,
+        newCommitment
       }
-    }
+    );
     return {
-      txHash: tx.hash,
+      txHash: `relay:${relayResult.request_id}`,
       newSecret: secret,
       newNullifier,
       newCommitment,
-      proxyAddress
+      relayRequestId: relayResult.request_id,
+      relayQueueLength: relayResult.queue_len,
+      relayGasEstimate: relayResult.gas_estimate,
+      relayMinRequiredFeeWei: relayResult.min_required_fee_wei
     };
   }
   async getPrivateTransactionDetails(txHash) {
+    if (txHash.startsWith("relay:")) {
+      return {
+        txHash,
+        initiator: "relayer",
+        gasPayer: "relayer",
+        method: "relay_submission",
+        methodId: "relay",
+        parameters: "queued via relayer",
+        privacyLevel: "Private",
+        gasUsed: null,
+        status: "pending",
+        to: null
+      };
+    }
     const tx = await this.provider.getTransaction(txHash);
     if (!tx) {
       throw new Error(`Transaction not found for hash: ${txHash}`);
@@ -738,6 +601,168 @@ var PrivacyProtocolSDK = class {
       to: tx.to
     };
   }
+  normalizePublicInputWord(word) {
+    if (typeof word === "string") {
+      if (word.startsWith("0x") || word.startsWith("0X")) {
+        const normalized = word.slice(2);
+        if (normalized.length > 64) {
+          throw new Error(`public input exceeds bytes32: ${word}`);
+        }
+        return `0x${normalized.padStart(64, "0")}`;
+      }
+      return this.normalizePublicInputWord(BigInt(word));
+    }
+    if (typeof word === "number") {
+      return this.normalizePublicInputWord(BigInt(word));
+    }
+    if (typeof word === "bigint") {
+      if (word < 0n) {
+        throw new Error(`public input cannot be negative: ${word.toString()}`);
+      }
+      const hexValue = word.toString(16);
+      if (hexValue.length > 64) {
+        throw new Error(`public input exceeds bytes32: ${word.toString()}`);
+      }
+      return `0x${hexValue.padStart(64, "0")}`;
+    }
+    if (word instanceof Uint8Array) {
+      if (word.length > 32) {
+        throw new Error(`public input byte length exceeds 32: ${word.length}`);
+      }
+      const hexValue = ethers.hexlify(word).slice(2);
+      return `0x${hexValue.padStart(64, "0")}`;
+    }
+    throw new Error(`unsupported public input value type: ${typeof word}`);
+  }
+  upsertPublicInputWord(words, index, value) {
+    if (index < 0 || !Number.isInteger(index)) {
+      throw new Error(`invalid public input index: ${index}`);
+    }
+    while (words.length <= index) {
+      words.push(ZERO_BYTES32);
+    }
+    words[index] = value;
+  }
+  applyRelayerPublicInputs(publicInputs, options = {}) {
+    const words = [...publicInputs];
+    const relayerConfig = this.options.relayer;
+    const relayerIndex = options.relayerPublicInputIndex ?? relayerConfig?.relayerPublicInputIndex ?? void 0;
+    const relayerAddress = options.relayerAddress ?? relayerConfig?.relayerAddress ?? void 0;
+    if (relayerIndex !== void 0) {
+      if (!relayerAddress) {
+        throw new Error(
+          "Missing relayerAddress for relayerPublicInputIndex. Configure SDK relayer options or pass execution options."
+        );
+      }
+      const encodedAddress = ethers.AbiCoder.defaultAbiCoder().encode(
+        ["address"],
+        [relayerAddress]
+      );
+      this.upsertPublicInputWord(
+        words,
+        relayerIndex,
+        this.normalizePublicInputWord(encodedAddress)
+      );
+    }
+    const feeIndex = options.feePublicInputIndex ?? relayerConfig?.feePublicInputIndex;
+    const relayerFeeWei = options.relayerFeeWei ?? relayerConfig?.relayerFeeWei;
+    if (feeIndex !== void 0) {
+      if (relayerFeeWei === void 0) {
+        throw new Error(
+          "Missing relayerFeeWei for feePublicInputIndex. Configure SDK relayer options or pass execution options."
+        );
+      }
+      const encodedFee = ethers.AbiCoder.defaultAbiCoder().encode(
+        ["uint256"],
+        [BigInt(relayerFeeWei)]
+      );
+      this.upsertPublicInputWord(
+        words,
+        feeIndex,
+        this.normalizePublicInputWord(encodedFee)
+      );
+    }
+    return words;
+  }
+  resolveRelayerEndpoint() {
+    const relayerConfig = this.options.relayer;
+    if (!relayerConfig?.url) {
+      throw new Error(
+        "Relayer URL is not configured. Set options.relayer.url when creating the SDK instance."
+      );
+    }
+    const endpoint = relayerConfig.endpoint ?? "/relay";
+    if (endpoint.startsWith("http://") || endpoint.startsWith("https://")) {
+      return endpoint;
+    }
+    const base = relayerConfig.url.endsWith("/") ? relayerConfig.url.slice(0, -1) : relayerConfig.url;
+    const suffix = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+    return `${base}${suffix}`;
+  }
+  getRelayerFetch() {
+    const fetchFn = globalThis.fetch;
+    if (typeof fetchFn !== "function") {
+      throw new Error(
+        "Global fetch is unavailable in this runtime. Provide a fetch-capable environment for relayer transport."
+      );
+    }
+    return fetchFn;
+  }
+  async submitToRelayer(proof, publicInputs, executionOptions, operationMetadata) {
+    const fetchFn = this.getRelayerFetch();
+    const relayerConfig = this.options.relayer;
+    const endpoint = this.resolveRelayerEndpoint();
+    if (!Array.isArray(publicInputs)) {
+      throw new Error("Proof generation did not return an array of publicInputs");
+    }
+    const normalizedPublicInputs = publicInputs.map(
+      (word) => this.normalizePublicInputWord(word)
+    );
+    const relayerPublicInputs = this.applyRelayerPublicInputs(
+      normalizedPublicInputs,
+      executionOptions
+    );
+    const metadata = {
+      ...relayerConfig?.metadata,
+      ...operationMetadata,
+      ...executionOptions.relayMetadata
+    };
+    const payload = {
+      proof,
+      public_inputs: relayerPublicInputs
+    };
+    if (Object.keys(metadata).length > 0) {
+      payload.metadata = metadata;
+    }
+    const response = await fetchFn(endpoint, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...relayerConfig?.headers ?? {}
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) {
+      let errorMessage = `Relayer request failed with status ${response.status}`;
+      try {
+        const body2 = await response.json();
+        if (body2?.error) {
+          errorMessage = `Relayer request failed: ${body2.error}`;
+        }
+      } catch {
+        const bodyText = await response.text();
+        if (bodyText) {
+          errorMessage = `Relayer request failed: ${bodyText}`;
+        }
+      }
+      throw new Error(errorMessage);
+    }
+    const body = await response.json();
+    if (!body?.request_id) {
+      throw new Error("Relayer response is missing request_id");
+    }
+    return body;
+  }
   async _generateProof(secret, nullifier, amountInPool, amountToWithdraw, externalAddress, dataHash, leaves) {
     const bbModule = await loadBb();
     const Fr = bbModule.Fr;
@@ -762,7 +787,7 @@ var PrivacyProtocolSDK = class {
     if (!this.circuit) {
       throw new Error("Circuit not provided to SDK");
     }
-    const noir = new import_noir_js.Noir(this.circuit);
+    const noir = new Noir(this.circuit);
     const honk = new UltraHonkBackend(this.circuit.bytecode, { threads: 1 });
     const input = {
       root_hash: merkleProof.root.toString(),
@@ -818,418 +843,14 @@ var PrivacyProtocolSDK = class {
   }
 };
 
-// hooks/usePrivacyProtocol.ts
-function usePrivacyProtocol(options) {
-  const { poolAddress, provider, signer, circuit } = options;
-  const sdk = (0, import_react2.useMemo)(() => {
-    if (!provider || !poolAddress) {
-      return null;
-    }
-    return new PrivacyProtocolSDK(provider, poolAddress, circuit);
-  }, [provider, poolAddress, circuit]);
-  return {
-    sdk,
-    provider,
-    signer: signer ?? null,
-    isReady: Boolean(sdk && signer)
-  };
-}
+// core/index.ts
+var core_default = PrivacyProtocolSDK;
 
-// hooks/useCommitments.ts
-function useCommitments(options) {
-  const {
-    poolAddress,
-    provider,
-    signer,
-    circuit,
-    fromBlock = 0,
-    enabled = true,
-    refetchIntervalMs = 0
-  } = options;
-  const { sdk } = usePrivacyProtocol({
-    poolAddress,
-    provider,
-    signer,
-    circuit
-  });
-  const [commitments, setCommitments] = (0, import_react3.useState)([]);
-  const [isLoading, setIsLoading] = (0, import_react3.useState)(false);
-  const [error, setError] = (0, import_react3.useState)(null);
-  const refetch = (0, import_react3.useCallback)(async () => {
-    if (!sdk) {
-      throw new Error("PrivacyProtocolSDK is not initialized.");
-    }
-    setIsLoading(true);
-    setError(null);
-    try {
-      const leaves = await sdk.getLeaves(fromBlock);
-      setCommitments(leaves);
-      return leaves;
-    } catch (caughtError) {
-      const nextError = toError(caughtError);
-      setError(nextError);
-      throw nextError;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [sdk, fromBlock]);
-  (0, import_react3.useEffect)(() => {
-    if (!enabled || !sdk) {
-      return;
-    }
-    let intervalId = null;
-    void refetch();
-    if (refetchIntervalMs > 0) {
-      intervalId = setInterval(() => {
-        void refetch();
-      }, refetchIntervalMs);
-    }
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [enabled, sdk, refetch, refetchIntervalMs]);
-  return {
-    commitments,
-    isLoading,
-    error,
-    refetch,
-    sdk
-  };
-}
-
-// hooks/useDeposit.ts
-var import_react4 = require("react");
-function useDeposit(options) {
-  const { poolAddress, onSuccess, onError, ...contextOptions } = options;
-  const { sdk, signer } = usePrivacyProtocol({ poolAddress, ...contextOptions });
-  const [data, setData] = (0, import_react4.useState)(null);
-  const [note, setNote] = (0, import_react4.useState)(null);
-  const [isPending, setIsPending] = (0, import_react4.useState)(false);
-  const [error, setError] = (0, import_react4.useState)(null);
-  const deposit = (0, import_react4.useCallback)(
-    async (args) => {
-      if (!sdk) {
-        throw new Error("PrivacyProtocolSDK is not initialized.");
-      }
-      const txSigner = args.signer ?? signer;
-      if (!txSigner) {
-        throw new Error(
-          "No signer available. Pass a signer in hook options or call args."
-        );
-      }
-      setIsPending(true);
-      setError(null);
-      try {
-        const result = await sdk.deposit(args.token, args.amount, txSigner);
-        const chainId = await resolveChainId(txSigner);
-        const createdNote = buildPrivacyNote({
-          id: `${result.commitment}:${result.txHash}`,
-          poolAddress,
-          token: args.token,
-          amount: toAmountString(args.amount),
-          secret: result.secret,
-          nullifier: result.nullifier,
-          commitment: result.commitment,
-          txHash: result.txHash,
-          chainId,
-          metadata: args.metadata
-        });
-        setData(result);
-        setNote(createdNote);
-        onSuccess?.(result, createdNote);
-        return result;
-      } catch (caughtError) {
-        const nextError = toError(caughtError);
-        setError(nextError);
-        onError?.(nextError);
-        throw nextError;
-      } finally {
-        setIsPending(false);
-      }
-    },
-    [sdk, signer, poolAddress, onSuccess, onError]
-  );
-  const reset = (0, import_react4.useCallback)(() => {
-    setData(null);
-    setNote(null);
-    setError(null);
-    setIsPending(false);
-  }, []);
-  return {
-    deposit,
-    data,
-    note,
-    isPending,
-    error,
-    reset,
-    sdk,
-    signer,
-    isReady: Boolean(sdk && signer)
-  };
-}
-
-// hooks/useExecuteAction.ts
-var import_react5 = require("react");
-var import_ethers2 = require("ethers");
-function useExecuteAction(options) {
-  const { poolAddress, onSuccess, onError, ...contextOptions } = options;
-  const { sdk, signer } = usePrivacyProtocol({ poolAddress, ...contextOptions });
-  const [data, setData] = (0, import_react5.useState)(null);
-  const [nextNote, setNextNote] = (0, import_react5.useState)(null);
-  const [isPending, setIsPending] = (0, import_react5.useState)(false);
-  const [error, setError] = (0, import_react5.useState)(null);
-  const executeAction = (0, import_react5.useCallback)(
-    async (args) => {
-      if (!sdk) {
-        throw new Error("PrivacyProtocolSDK is not initialized.");
-      }
-      const txSigner = args.signer ?? signer;
-      if (!txSigner) {
-        throw new Error(
-          "No signer available. Pass a signer in hook options or call args."
-        );
-      }
-      const secret = args.secret ?? args.note?.secret;
-      const nullifier = args.nullifier ?? args.note?.nullifier;
-      const amountInPool = args.amountInPool ?? args.note?.amount;
-      if (!secret || !nullifier) {
-        throw new Error(
-          "Missing secret or nullifier. Provide them directly or pass a note."
-        );
-      }
-      if (amountInPool === void 0) {
-        throw new Error(
-          "Missing amountInPool. Provide it directly or pass a note."
-        );
-      }
-      const actionId = args.actionId ?? import_ethers2.ethers.keccak256(import_ethers2.ethers.getBytes(secret));
-      setIsPending(true);
-      setError(null);
-      try {
-        const leaves = args.leaves ?? await sdk.getLeaves(args.fromBlock ?? 0);
-        const result = await sdk.executeAction(
-          args.token,
-          args.amount,
-          args.target,
-          args.data,
-          actionId,
-          secret,
-          nullifier,
-          amountInPool,
-          leaves,
-          txSigner
-        );
-        const chainId = await resolveChainId(txSigner);
-        const amountLeft = BigInt(toAmountString(amountInPool)) - BigInt(toAmountString(args.amount));
-        const generatedNote = buildPrivacyNote({
-          id: `${result.newCommitment}:${result.txHash}`,
-          poolAddress,
-          token: args.token,
-          amount: amountLeft >= 0n ? amountLeft.toString() : "0",
-          secret: result.newSecret,
-          nullifier: result.newNullifier,
-          commitment: result.newCommitment,
-          txHash: result.txHash,
-          chainId,
-          metadata: {
-            sourceNoteId: args.note?.id,
-            target: args.target,
-            actionId,
-            proxyAddress: result.proxyAddress,
-            type: "executeAction"
-          }
-        });
-        setData(result);
-        setNextNote(generatedNote);
-        onSuccess?.(result, generatedNote);
-        return result;
-      } catch (caughtError) {
-        const nextError = toError(caughtError);
-        setError(nextError);
-        onError?.(nextError);
-        throw nextError;
-      } finally {
-        setIsPending(false);
-      }
-    },
-    [sdk, signer, poolAddress, onSuccess, onError]
-  );
-  const reset = (0, import_react5.useCallback)(() => {
-    setData(null);
-    setNextNote(null);
-    setError(null);
-    setIsPending(false);
-  }, []);
-  return {
-    executeAction,
-    data,
-    nextNote,
-    isPending,
-    error,
-    reset,
-    sdk,
-    signer,
-    isReady: Boolean(sdk && signer)
-  };
-}
-
-// hooks/usePrivateTransactionDetails.ts
-var import_react6 = require("react");
-function usePrivateTransactionDetails(options) {
-  const { poolAddress, provider, signer, circuit, txHash, enabled = true } = options;
-  const { sdk } = usePrivacyProtocol({
-    poolAddress,
-    provider,
-    signer,
-    circuit
-  });
-  const [data, setData] = (0, import_react6.useState)(null);
-  const [isLoading, setIsLoading] = (0, import_react6.useState)(false);
-  const [error, setError] = (0, import_react6.useState)(null);
-  const refetch = (0, import_react6.useCallback)(async () => {
-    if (!sdk) {
-      throw new Error("PrivacyProtocolSDK is not initialized.");
-    }
-    if (!txHash) {
-      throw new Error("txHash is required to fetch transaction details.");
-    }
-    setIsLoading(true);
-    setError(null);
-    try {
-      const details = await sdk.getPrivateTransactionDetails(txHash);
-      setData(details);
-      return details;
-    } catch (caughtError) {
-      const nextError = toError(caughtError);
-      setError(nextError);
-      throw nextError;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [sdk, txHash]);
-  (0, import_react6.useEffect)(() => {
-    if (!enabled || !txHash || !sdk) {
-      return;
-    }
-    void refetch();
-  }, [enabled, txHash, sdk, refetch]);
-  return {
-    data,
-    isLoading,
-    error,
-    refetch,
-    sdk
-  };
-}
-
-// hooks/useWithdraw.ts
-var import_react7 = require("react");
-function useWithdraw(options) {
-  const { poolAddress, onSuccess, onError, ...contextOptions } = options;
-  const { sdk, signer } = usePrivacyProtocol({ poolAddress, ...contextOptions });
-  const [data, setData] = (0, import_react7.useState)(null);
-  const [nextNote, setNextNote] = (0, import_react7.useState)(null);
-  const [isPending, setIsPending] = (0, import_react7.useState)(false);
-  const [error, setError] = (0, import_react7.useState)(null);
-  const withdraw = (0, import_react7.useCallback)(
-    async (args) => {
-      if (!sdk) {
-        throw new Error("PrivacyProtocolSDK is not initialized.");
-      }
-      const txSigner = args.signer ?? signer;
-      if (!txSigner) {
-        throw new Error(
-          "No signer available. Pass a signer in hook options or call args."
-        );
-      }
-      const secret = args.secret ?? args.note?.secret;
-      const nullifier = args.nullifier ?? args.note?.nullifier;
-      const amountInPool = args.amountInPool ?? args.note?.amount;
-      if (!secret || !nullifier) {
-        throw new Error(
-          "Missing secret or nullifier. Provide them directly or pass a note."
-        );
-      }
-      if (amountInPool === void 0) {
-        throw new Error(
-          "Missing amountInPool. Provide it directly or pass a note."
-        );
-      }
-      setIsPending(true);
-      setError(null);
-      try {
-        const leaves = args.leaves ?? await sdk.getLeaves(args.fromBlock ?? 0);
-        const result = await sdk.withdraw(
-          args.token,
-          args.recipient,
-          args.amount,
-          secret,
-          nullifier,
-          amountInPool,
-          leaves,
-          txSigner
-        );
-        const chainId = await resolveChainId(txSigner);
-        const amountLeft = BigInt(toAmountString(amountInPool)) - BigInt(toAmountString(args.amount));
-        const generatedNote = buildPrivacyNote({
-          id: `${result.newCommitment}:${result.txHash}`,
-          poolAddress,
-          token: args.token,
-          amount: amountLeft >= 0n ? amountLeft.toString() : "0",
-          secret: result.newSecret,
-          nullifier: result.newNullifier,
-          commitment: result.newCommitment,
-          txHash: result.txHash,
-          chainId,
-          metadata: {
-            sourceNoteId: args.note?.id,
-            recipient: args.recipient,
-            type: "withdraw"
-          }
-        });
-        setData(result);
-        setNextNote(generatedNote);
-        onSuccess?.(result, generatedNote);
-        return result;
-      } catch (caughtError) {
-        const nextError = toError(caughtError);
-        setError(nextError);
-        onError?.(nextError);
-        throw nextError;
-      } finally {
-        setIsPending(false);
-      }
-    },
-    [sdk, signer, poolAddress, onSuccess, onError]
-  );
-  const reset = (0, import_react7.useCallback)(() => {
-    setData(null);
-    setNextNote(null);
-    setError(null);
-    setIsPending(false);
-  }, []);
-  return {
-    withdraw,
-    data,
-    nextNote,
-    isPending,
-    error,
-    reset,
-    sdk,
-    signer,
-    isReady: Boolean(sdk && signer)
-  };
-}
-// Annotate the CommonJS export names for ESM import in node:
-0 && (module.exports = {
-  useCommitments,
-  useDeposit,
-  useExecuteAction,
-  useLocalNotes,
-  usePrivacyProtocol,
-  usePrivateTransactionDetails,
-  useWithdraw
-});
-//# sourceMappingURL=index.cjs.map
+export {
+  merkleTree,
+  utils_exports,
+  DEFAULT_PRIVACY_PROTOCOL_CIRCUIT,
+  PrivacyProtocolSDK,
+  core_default
+};
+//# sourceMappingURL=chunk-BJ65LMH4.mjs.map

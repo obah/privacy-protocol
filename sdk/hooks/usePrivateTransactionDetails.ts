@@ -15,14 +15,8 @@ export interface UsePrivateTransactionDetailsOptions
 export function usePrivateTransactionDetails(
   options: UsePrivateTransactionDetailsOptions,
 ) {
-  const { poolAddress, provider, signer, circuit, txHash, enabled = true } =
-    options;
-  const { sdk } = usePrivacyProtocol({
-    poolAddress,
-    provider,
-    signer,
-    circuit,
-  });
+  const { txHash, enabled = true, ...contextOptions } = options;
+  const { sdk } = usePrivacyProtocol(contextOptions);
   const [data, setData] = useState<PrivateTransactionDetails | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);

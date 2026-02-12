@@ -34,6 +34,7 @@ Before integration, ensure all of the following are available:
 5. Pool configuration that includes each token via `addSupportedToken`
 6. User token balance and ERC20 approval to `poolAddress`
 7. Storage for note data (`secret`, `nullifier`, `commitment`, `amount`, `txHash`)
+8. A reachable relayer endpoint URL (`POST /relay`)
 
 ## Core SDK
 
@@ -46,6 +47,21 @@ import { PrivacyProtocolSDK } from "privacy-protocol/core";
 const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
 const poolAddress = process.env.PRIVACY_PROTOCOL_POOL_ADDRESS as string;
 const sdk = new PrivacyProtocolSDK(provider, poolAddress);
+```
+
+### Initialize (Private Execution Uses Relayer)
+
+```ts
+const sdk = new PrivacyProtocolSDK(provider, poolAddress, undefined, {
+  relayer: {
+    url: "https://your-relayer.example.com",
+    endpoint: "/relay",
+    relayerPublicInputIndex: 6,
+    relayerAddress: "0xRelayerAddress",
+    feePublicInputIndex: 7,
+    relayerFeeWei: "1000000000000000",
+  },
+});
 ```
 
 ### Deposit
@@ -116,6 +132,8 @@ const executeResult = await sdk.executeAction(
 const txDetails = await sdk.getPrivateTransactionDetails(txHash);
 ```
 
+Private executions (`executeAction`, `withdraw`) return a relay submission id as `txHash` in the format `relay:<request_id>`.
+
 ## React Hooks
 
 All hooks are exported from `privacy-protocol/hooks`.
@@ -130,6 +148,13 @@ const { sdk, isReady } = usePrivacyProtocol({
   poolAddress,
   provider,
   signer,
+  relayer: {
+    url: "https://your-relayer.example.com",
+    relayerPublicInputIndex: 6,
+    relayerAddress: "0xRelayerAddress",
+    feePublicInputIndex: 7,
+    relayerFeeWei: "1000000000000000",
+  },
 });
 ```
 

@@ -19,7 +19,12 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
 } from "wagmi";
-import { DEMO_CONTRACTS, DEMO_DAO_ABI, ERC20_ABI } from "@/lib/demo-config";
+import {
+  DEMO_CONTRACTS,
+  DEMO_DAO_ABI,
+  DEMO_RELAYER,
+  ERC20_ABI,
+} from "@/lib/demo-config";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { formatEther, parseEther } from "viem";
@@ -123,12 +128,14 @@ function ProposalCard({
     poolAddress: DEMO_CONTRACTS.PrivacyProtocolPool,
     provider,
     signer,
+    relayer: DEMO_RELAYER,
   });
 
   const { executeAction } = useExecuteAction({
     poolAddress: DEMO_CONTRACTS.PrivacyProtocolPool,
     provider,
     signer,
+    relayer: DEMO_RELAYER,
   });
 
   const { data: proposalData, refetch: refetchProposalData } = useReadContract({
@@ -180,14 +187,14 @@ function ProposalCard({
       methodHint: string,
       parametersHint: string,
       details: PrivateTransactionDetails | null,
-      metadata?: Record<string, string | undefined>,
+      metadata?: Record<string, string | number | undefined>,
     ) => {
       if (!onPrivateTransaction) {
         return;
       }
 
       onPrivateTransaction({
-        hash: hash as `0x${string}`,
+        hash,
         source: "dao",
         methodHint,
         parametersHint,
@@ -200,8 +207,30 @@ function ProposalCard({
           parameters: details?.parameters,
           status: details?.status,
           to: details?.to,
-          proxyAddress: metadata?.proxyAddress,
-          noteCommitment: metadata?.noteCommitment,
+          proxyAddress:
+            typeof metadata?.proxyAddress === "string"
+              ? metadata.proxyAddress
+              : undefined,
+          noteCommitment:
+            typeof metadata?.noteCommitment === "string"
+              ? metadata.noteCommitment
+              : undefined,
+          relayRequestId:
+            typeof metadata?.relayRequestId === "string"
+              ? metadata.relayRequestId
+              : undefined,
+          relayQueueLength:
+            typeof metadata?.relayQueueLength === "number"
+              ? metadata.relayQueueLength
+              : undefined,
+          relayGasEstimate:
+            typeof metadata?.relayGasEstimate === "string"
+              ? metadata.relayGasEstimate
+              : undefined,
+          relayMinRequiredFeeWei:
+            typeof metadata?.relayMinRequiredFeeWei === "string"
+              ? metadata.relayMinRequiredFeeWei
+              : undefined,
         },
       });
     },
@@ -283,6 +312,14 @@ function ProposalCard({
         toast.error("Privacy SDK is not ready. Please reconnect wallet.");
         return;
       }
+      if (
+        !DEMO_RELAYER.relayerAddress ||
+        DEMO_RELAYER.relayerAddress ===
+          "0x0000000000000000000000000000000000000000"
+      ) {
+        toast.error("Relayer address is not configured for private mode.");
+        return;
+      }
 
       setPendingVoteSupport(support);
       setIsPrivatePending(true);
@@ -337,6 +374,10 @@ function ProposalCard({
           {
             proxyAddress: executeResult.proxyAddress,
             noteCommitment: executeResult.newCommitment,
+            relayRequestId: executeResult.relayRequestId,
+            relayQueueLength: executeResult.relayQueueLength,
+            relayGasEstimate: executeResult.relayGasEstimate,
+            relayMinRequiredFeeWei: executeResult.relayMinRequiredFeeWei,
           },
         );
 
