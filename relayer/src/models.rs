@@ -2,7 +2,7 @@ use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, Utc};
 use ethers::{
     abi::{decode, ParamType, Token},
-    types::{Address, Bytes, U256},
+    types::{Address, Bytes, TxHash, U256},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -79,6 +79,28 @@ pub struct RelayQueuedResponse {
 pub struct HealthResponse {
     pub status: &'static str,
     pub queue_len: usize,
+}
+
+#[derive(Debug, Clone)]
+pub enum RelayRequestStatus {
+    Queued,
+    Submitted { tx_hash: TxHash },
+}
+
+impl RelayRequestStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            RelayRequestStatus::Queued => "queued",
+            RelayRequestStatus::Submitted { .. } => "submitted",
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct RelayStatusResponse {
+    pub request_id: Uuid,
+    pub status: &'static str,
+    pub tx_hash: Option<String>,
 }
 
 impl RelayRequest {

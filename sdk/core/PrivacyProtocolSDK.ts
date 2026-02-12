@@ -47,6 +47,12 @@ interface RelayQueuedResponseWire {
   min_required_fee_wei: string;
 }
 
+interface RelayStatusResponseWire {
+  request_id: string;
+  status: "queued" | "submitted";
+  tx_hash?: string | null;
+}
+
 export interface ExecutionResult {
   txHash: string;
   newSecret: string;
@@ -154,6 +160,10 @@ export class PrivacyProtocolSDK {
       amount,
       commitmentHex,
     );
+    const receipt = await tx.wait();
+    if (!receipt || receipt.status !== 1) {
+      throw new Error("Deposit transaction failed");
+    }
 
     return {
       secret: "0x" + Buffer.from(secret.toBuffer()).toString("hex"),
@@ -303,6 +313,31 @@ export class PrivacyProtocolSDK {
     txHash: string,
   ): Promise<PrivateTransactionDetails> {
     if (txHash.startsWith("relay:")) {
+      const requestId = txHash.slice("relay:".length);
+      if (requestId) {
+        try {
+          const relayStatus = await this.fetchRelayStatus(requestId);
+          if (relayStatus.status === "submitted" && relayStatus.tx_hash) {
+            try {
+              return await this.getPrivateTransactionDetails(relayStatus.tx_hash);
+            } catch {
+              return {
+                txHash: relayStatus.tx_hash,
+                initiator: "relayer",
+                gasPayer: "relayer",
+                method: "relay_submission",
+                methodId: "relay",
+                parameters: "submitted via relayer",
+                privacyLevel: "Private",
+                gasUsed: null,
+                status: "pending",
+                to: this.contractAddress,
+              };
+            }
+          }
+        } catch {}
+      }
+
       return {
         txHash,
         initiator: "relayer",
@@ -352,6 +387,38 @@ export class PrivacyProtocolSDK {
         : "pending",
       to: tx.to,
     };
+  }
+
+  private resolveRelayerStatusEndpoint(requestId: string): string {
+    const relayEndpoint = this.resolveRelayerEndpoint();
+    const suffix = encodeURIComponent(requestId);
+    return relayEndpoint.endsWith("/")
+      ? `${relayEndpoint}${suffix}`
+      : `${relayEndpoint}/${suffix}`;
+  }
+
+  private async fetchRelayStatus(
+    requestId: string,
+  ): Promise<RelayStatusResponseWire> {
+    const fetchFn = this.getRelayerFetch();
+    const endpoint = this.resolveRelayerStatusEndpoint(requestId);
+
+    const response = await fetchFn(endpoint, {
+      method: "GET",
+      headers: {
+        ...(this.options.relayer?.headers ?? {}),
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch relay status (${response.status})`);
+    }
+
+    const body = (await response.json()) as RelayStatusResponseWire;
+    if (!body?.request_id || !body?.status) {
+      throw new Error("Relayer status response is missing required fields");
+    }
+    return body;
   }
 
   private normalizePublicInputWord(word: unknown): string {
@@ -650,31 +717,55 @@ export class PrivacyProtocolSDK {
     const depositFilter = this.contract.filters.PrivacyProtocolPool__Deposit();
     const withdrawalFilter =
       this.contract.filters.PrivacyProtocolPool__Withdrawal();
+    const actionFilter = this.contract.filters.PrivacyProtocolPool__ActionExecuted();
 
-    const [deposits, withdrawals] = await Promise.all([
+    const [deposits, withdrawals, actions] = await Promise.all([
       this.contract.queryFilter(depositFilter, fromBlock),
       this.contract.queryFilter(withdrawalFilter, fromBlock),
+      this.contract.queryFilter(actionFilter, fromBlock),
     ]);
 
-    const events = [...deposits, ...withdrawals].sort((a: any, b: any) => {
+    const events = [...deposits, ...withdrawals, ...actions].sort((a: any, b: any) => {
       if (a.blockNumber === b.blockNumber) {
+        if (a.transactionIndex === b.transactionIndex) {
+          return a.logIndex - b.logIndex;
+        }
         return a.transactionIndex - b.transactionIndex;
       }
       return a.blockNumber - b.blockNumber;
     });
 
-    const leafMap = new Map<number, string>();
+    const leaves: string[] = [];
 
-    deposits.forEach((e: any) => {
-      leafMap.set(Number(e.args.insertedLeafIndex), e.args.commitment);
-    });
+    for (const event of events as any[]) {
+      if (event.fragment?.name === "PrivacyProtocolPool__Deposit") {
+        leaves.push(this.normalizePublicInputWord(event.args.commitment));
+        continue;
+      }
 
-    withdrawals.forEach((e: any) => {
-      leafMap.set(Number(e.args.insertedLeafIndex), e.args.newCommitment);
-    });
+      if (event.fragment?.name === "PrivacyProtocolPool__Withdrawal") {
+        leaves.push(this.normalizePublicInputWord(event.args.newCommitment));
+        continue;
+      }
 
-    const sortedIndices = Array.from(leafMap.keys()).sort((a, b) => a - b);
-    const leaves = sortedIndices.map((i) => leafMap.get(i)!);
+      if (event.fragment?.name === "PrivacyProtocolPool__ActionExecuted") {
+        const tx = await this.provider.getTransaction(event.transactionHash);
+        if (!tx?.data) {
+          continue;
+        }
+        const parsed = this.contract.interface.parseTransaction({ data: tx.data });
+        if (!parsed || parsed.name !== "executeAction") {
+          continue;
+        }
+        const request = parsed.args?.[0];
+        const newCommitment =
+          request?.newCommitment ?? request?.[8] ?? undefined;
+        if (!newCommitment) {
+          continue;
+        }
+        leaves.push(this.normalizePublicInputWord(newCommitment));
+      }
+    }
 
     return leaves;
   }

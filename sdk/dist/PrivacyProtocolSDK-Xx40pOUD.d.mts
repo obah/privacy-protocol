@@ -142,6 +142,8 @@ declare class PrivacyProtocolSDK {
     withdraw(token: string, recipient: string, amount: string | number | bigint, secret: string, nullifier: string, amountInPool: string | number | bigint, leaves: string[], signer: Signer, executionOptions?: ExecutionCallOptions): Promise<ExecutionResult>;
     executeAction(token: string, amount: string | number | bigint, target: string, data: string, actionId: string, secret: string, nullifier: string, amountInPool: string | number | bigint, leaves: string[], signer: Signer, executionOptions?: ExecutionCallOptions): Promise<ExecutionResult>;
     getPrivateTransactionDetails(txHash: string): Promise<PrivateTransactionDetails>;
+    private resolveRelayerStatusEndpoint;
+    private fetchRelayStatus;
     private normalizePublicInputWord;
     private upsertPublicInputWord;
     private applyRelayerPublicInputs;

@@ -4,6 +4,7 @@ use std::time::Duration;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
+use crate::models::RelayRequestStatus;
 
 const EMPTY_QUEUE_SLEEP_MS: u64 = 1_000;
 const NON_EMPTY_QUEUE_SLEEP_MS: u64 = 300;
@@ -68,11 +69,18 @@ pub async fn run_batch_worker(state: AppState, shutdown: CancellationToken) {
                         hit_failure = true;
                         break;
                     }
+                    let queue_len = mempool.len();
+                    drop(mempool);
+
+                    {
+                        let mut statuses = state.relay_statuses.write().await;
+                        statuses.insert(item.id, RelayRequestStatus::Submitted { tx_hash });
+                    }
 
                     info!(
                         tx_hash = %tx_hash,
                         request_id = %item.id,
-                        queue_len = mempool.len(),
+                        queue_len,
                         "relay request submitted successfully"
                     );
                 }
@@ -116,7 +124,7 @@ mod tests {
         abi::{encode, Token},
         types::{Address, TxHash, U256},
     };
-    use std::{path::PathBuf, sync::Arc, time::Duration};
+    use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
     use tokio::sync::{Mutex, RwLock};
     use tokio::time::{sleep, timeout};
     use uuid::Uuid;
@@ -218,6 +226,7 @@ mod tests {
                 config,
                 chain,
                 mempool: Arc::new(RwLock::new(mempool)),
+                relay_statuses: Arc::new(RwLock::new(HashMap::new())),
             },
             chain_impl,
         )
@@ -254,5 +263,6 @@ mod tests {
 
         assert_eq!(chain.submit_count().await, 1);
         assert_eq!(state.mempool.read().await.len(), 0);
+        assert_eq!(state.relay_statuses.read().await.len(), 1);
     }
 }

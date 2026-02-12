@@ -3,7 +3,7 @@ import {
   PrivacyProtocolSDK,
   merkleTree,
   utils_exports
-} from "./chunk-P6J6LX2M.mjs";
+} from "./chunk-53HXHJOO.mjs";
 import "./chunk-D57E6H3M.mjs";
 export {
   DEFAULT_PRIVACY_PROTOCOL_CIRCUIT,

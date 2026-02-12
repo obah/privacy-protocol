@@ -5,6 +5,7 @@ High-performance relayer service for Privacy Protocol. It accepts proof payloads
 ## Features
 
 - `POST /relay` JSON API for relay intake.
+- `GET /relay/:request_id` status API (`queued` / `submitted` + tx hash when available).
 - Anti-theft check: `public_inputs[RELAYER_INDEX]` must match relayer wallet address.
 - Fee check: request fee must cover `estimated_gas_cost * 1.1`.
 - Smart batching worker:
@@ -89,6 +90,18 @@ Response:
 {
   "status": "ok",
   "queue_len": 0
+}
+```
+
+### `GET /relay/:request_id`
+
+Response:
+
+```json
+{
+  "request_id": "uuid",
+  "status": "queued",
+  "tx_hash": null
 }
 ```
 

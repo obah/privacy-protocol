@@ -11,6 +11,8 @@ pub enum ApiError {
     #[error("{0}")]
     BadRequest(String),
     #[error("{0}")]
+    NotFound(String),
+    #[error("{0}")]
     Forbidden(String),
     #[error("{0}")]
     Unprocessable(String),
@@ -27,6 +29,7 @@ impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let status = match self {
             ApiError::BadRequest(_) => StatusCode::BAD_REQUEST,
+            ApiError::NotFound(_) => StatusCode::NOT_FOUND,
             ApiError::Forbidden(_) => StatusCode::FORBIDDEN,
             ApiError::Unprocessable(_) => StatusCode::UNPROCESSABLE_ENTITY,
             ApiError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,

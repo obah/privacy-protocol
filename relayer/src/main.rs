@@ -14,7 +14,7 @@ use crate::{
 use anyhow::{Context, Result};
 #[cfg(not(unix))]
 use std::future::pending;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use tokio::{net::TcpListener, sync::RwLock};
 use tokio_util::sync::CancellationToken;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
@@ -40,6 +40,7 @@ async fn main() -> Result<()> {
         config: config.clone(),
         chain: chain.clone(),
         mempool: mempool.clone(),
+        relay_statuses: Arc::new(RwLock::new(HashMap::new())),
     };
 
     let shutdown = CancellationToken::new();

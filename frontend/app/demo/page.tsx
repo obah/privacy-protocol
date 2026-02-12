@@ -9,7 +9,12 @@ import type {
   PrivateTransactionEvent,
   PrivateTransactionReporter,
 } from "@/components/demo/transaction-log-types";
-import { DEMO_DAO_ABI, DEMO_DEFI_ABI, ERC20_ABI } from "@/lib/demo-config";
+import {
+  DEMO_DAO_ABI,
+  DEMO_DEFI_ABI,
+  DEMO_RELAYER,
+  ERC20_ABI,
+} from "@/lib/demo-config";
 import { cn } from "@/lib/utils";
 import {
   ExternalLink,
@@ -20,7 +25,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { decodeFunctionData, type Hex } from "viem";
 import { useTransaction, useWaitForTransactionReceipt } from "wagmi";
 
@@ -38,6 +43,18 @@ interface PrivateTransactionLog extends PrivateTransactionEvent {
 
 const ARBITRUM_SEPOLIA_EXPLORER = "https://sepolia.arbiscan.io";
 const NORMAL_DECODE_ABI = [...DEMO_DAO_ABI, ...DEMO_DEFI_ABI, ...ERC20_ABI];
+const RELAY_STATUS_POLL_MS = 2_000;
+
+function buildRelayStatusUrl(requestId: string): string {
+  const endpoint = DEMO_RELAYER.endpoint ?? "/relay";
+  const base = DEMO_RELAYER.url.endsWith("/")
+    ? DEMO_RELAYER.url.slice(0, -1)
+    : DEMO_RELAYER.url;
+  const normalizedEndpoint = endpoint.startsWith("/")
+    ? endpoint
+    : `/${endpoint}`;
+  return `${base}${normalizedEndpoint}/${encodeURIComponent(requestId)}`;
+}
 
 function truncate(value: string, start: number = 12, end: number = 8): string {
   if (value.length <= start + end + 3) return value;
@@ -379,6 +396,84 @@ export default function DemoPage() {
       return [nextLog, ...current].slice(0, 8);
     });
   }, []);
+
+  useEffect(() => {
+    const pendingRelayLogs = privateLogs.filter(
+      (log) =>
+        log.hash.startsWith("relay:") &&
+        log.metadata?.relayRequestId &&
+        log.metadata?.status !== "success",
+    );
+
+    if (pendingRelayLogs.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const pollRelayStatuses = async () => {
+      const updates: Array<{ id: string; txHash: string }> = [];
+
+      for (const log of pendingRelayLogs) {
+        const requestId = log.metadata?.relayRequestId;
+        if (!requestId) {
+          continue;
+        }
+
+        try {
+          const response = await fetch(buildRelayStatusUrl(requestId));
+          if (!response.ok) {
+            continue;
+          }
+          const payload = (await response.json()) as {
+            status?: string;
+            tx_hash?: string | null;
+          };
+          if (
+            payload.status === "submitted" &&
+            payload.tx_hash &&
+            payload.tx_hash.startsWith("0x")
+          ) {
+            updates.push({ id: log.id, txHash: payload.tx_hash });
+          }
+        } catch {
+          continue;
+        }
+      }
+
+      if (cancelled || updates.length === 0) {
+        return;
+      }
+
+      setPrivateLogs((current) =>
+        current.map((log) => {
+          const update = updates.find((candidate) => candidate.id === log.id);
+          if (!update) {
+            return log;
+          }
+
+          return {
+            ...log,
+            hash: update.txHash,
+            metadata: {
+              ...log.metadata,
+              status: undefined,
+            },
+          };
+        }),
+      );
+    };
+
+    void pollRelayStatuses();
+    const interval = setInterval(() => {
+      void pollRelayStatuses();
+    }, RELAY_STATUS_POLL_MS);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [privateLogs]);
 
   const tabContent = {
     dao: {

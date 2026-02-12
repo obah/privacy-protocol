@@ -1,19 +1,24 @@
 use crate::{
     errors::ApiError,
-    models::{decode_relayer_address, HealthResponse, RelayQueuedResponse, RelayRequest},
+    models::{
+        decode_relayer_address, HealthResponse, RelayQueuedResponse, RelayRequest,
+        RelayRequestStatus, RelayStatusResponse,
+    },
     state::AppState,
 };
 use axum::{
-    extract::State,
+    extract::{Path, State},
     routing::{get, post},
     Json, Router,
 };
 use chrono::Utc;
 use tracing::{info, warn};
+use uuid::Uuid;
 
 pub fn build_router(state: AppState) -> Router {
     Router::new()
         .route("/relay", post(relay))
+        .route("/relay/:request_id", get(relay_status))
         .route("/health", get(health))
         .with_state(state)
 }
@@ -76,6 +81,10 @@ pub async fn relay(
             .push(item)
             .map_err(|error| ApiError::Internal(format!("failed to enqueue request: {error:#}")))?
     };
+    {
+        let mut statuses = state.relay_statuses.write().await;
+        statuses.insert(request_id, RelayRequestStatus::Queued);
+    }
 
     info!(
         request_id = %request_id,
@@ -91,6 +100,29 @@ pub async fn relay(
         queue_len,
         gas_estimate: estimate.gas_estimate.to_string(),
         min_required_fee_wei: estimate.min_required_fee_wei.to_string(),
+    }))
+}
+
+pub async fn relay_status(
+    Path(request_id): Path<Uuid>,
+    State(state): State<AppState>,
+) -> Result<Json<RelayStatusResponse>, ApiError> {
+    let statuses = state.relay_statuses.read().await;
+    let Some(status) = statuses.get(&request_id) else {
+        return Err(ApiError::NotFound(format!(
+            "relay request not found: {request_id}"
+        )));
+    };
+
+    let tx_hash = match status {
+        RelayRequestStatus::Queued => None,
+        RelayRequestStatus::Submitted { tx_hash } => Some(format!("{tx_hash:#x}")),
+    };
+
+    Ok(Json(RelayStatusResponse {
+        request_id,
+        status: status.as_str(),
+        tx_hash,
     }))
 }
 
@@ -117,7 +149,7 @@ mod tests {
         abi::{encode, Token},
         types::{Address, TxHash, U256},
     };
-    use std::{path::PathBuf, sync::Arc};
+    use std::{collections::HashMap, path::PathBuf, sync::Arc};
     use tokio::sync::{Mutex, RwLock};
     use uuid::Uuid;
 
@@ -204,6 +236,7 @@ mod tests {
             config,
             chain,
             mempool: Arc::new(RwLock::new(mempool)),
+            relay_statuses: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -221,6 +254,11 @@ mod tests {
 
         assert_eq!(response.0.queue_len, 1);
         assert_eq!(state.mempool.read().await.len(), 1);
+        let statuses = state.relay_statuses.read().await;
+        let status = statuses
+            .get(&response.0.request_id)
+            .expect("status should be tracked");
+        assert_eq!(status.as_str(), "queued");
     }
 
     #[tokio::test]
@@ -241,5 +279,25 @@ mod tests {
         }
 
         assert_eq!(state.mempool.read().await.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn relay_status_returns_queued_entry() {
+        let relayer = Address::from_low_u64_be(42);
+        let state = build_state(relayer, U256::from(100u64)).await;
+
+        let queued = relay(
+            State(state.clone()),
+            Json(test_request(relayer, U256::from(500u64))),
+        )
+        .await
+        .expect("relay request should be accepted");
+
+        let status = relay_status(Path(queued.0.request_id), State(state))
+            .await
+            .expect("status endpoint should resolve request id");
+
+        assert_eq!(status.0.status, "queued");
+        assert!(status.0.tx_hash.is_none());
     }
 }

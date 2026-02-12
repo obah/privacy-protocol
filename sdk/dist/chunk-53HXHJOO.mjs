@@ -448,6 +448,10 @@ var PrivacyProtocolSDK = class {
       amount,
       commitmentHex
     );
+    const receipt = await tx.wait();
+    if (!receipt || receipt.status !== 1) {
+      throw new Error("Deposit transaction failed");
+    }
     return {
       secret: "0x" + Buffer.from(secret.toBuffer()).toString("hex"),
       nullifier: "0x" + Buffer.from(nullifier.toBuffer()).toString("hex"),
@@ -561,6 +565,31 @@ var PrivacyProtocolSDK = class {
   }
   async getPrivateTransactionDetails(txHash) {
     if (txHash.startsWith("relay:")) {
+      const requestId = txHash.slice("relay:".length);
+      if (requestId) {
+        try {
+          const relayStatus = await this.fetchRelayStatus(requestId);
+          if (relayStatus.status === "submitted" && relayStatus.tx_hash) {
+            try {
+              return await this.getPrivateTransactionDetails(relayStatus.tx_hash);
+            } catch {
+              return {
+                txHash: relayStatus.tx_hash,
+                initiator: "relayer",
+                gasPayer: "relayer",
+                method: "relay_submission",
+                methodId: "relay",
+                parameters: "submitted via relayer",
+                privacyLevel: "Private",
+                gasUsed: null,
+                status: "pending",
+                to: this.contractAddress
+              };
+            }
+          }
+        } catch {
+        }
+      }
       return {
         txHash,
         initiator: "relayer",
@@ -602,6 +631,29 @@ var PrivacyProtocolSDK = class {
       status: receipt ? receipt.status === 1 ? "success" : "reverted" : "pending",
       to: tx.to
     };
+  }
+  resolveRelayerStatusEndpoint(requestId) {
+    const relayEndpoint = this.resolveRelayerEndpoint();
+    const suffix = encodeURIComponent(requestId);
+    return relayEndpoint.endsWith("/") ? `${relayEndpoint}${suffix}` : `${relayEndpoint}/${suffix}`;
+  }
+  async fetchRelayStatus(requestId) {
+    const fetchFn = this.getRelayerFetch();
+    const endpoint = this.resolveRelayerStatusEndpoint(requestId);
+    const response = await fetchFn(endpoint, {
+      method: "GET",
+      headers: {
+        ...this.options.relayer?.headers ?? {}
+      }
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch relay status (${response.status})`);
+    }
+    const body = await response.json();
+    if (!body?.request_id || !body?.status) {
+      throw new Error("Relayer status response is missing required fields");
+    }
+    return body;
   }
   normalizePublicInputWord(word) {
     if (typeof word === "string") {
@@ -822,25 +874,48 @@ var PrivacyProtocolSDK = class {
   async getLeaves(fromBlock = 0) {
     const depositFilter = this.contract.filters.PrivacyProtocolPool__Deposit();
     const withdrawalFilter = this.contract.filters.PrivacyProtocolPool__Withdrawal();
-    const [deposits, withdrawals] = await Promise.all([
+    const actionFilter = this.contract.filters.PrivacyProtocolPool__ActionExecuted();
+    const [deposits, withdrawals, actions] = await Promise.all([
       this.contract.queryFilter(depositFilter, fromBlock),
-      this.contract.queryFilter(withdrawalFilter, fromBlock)
+      this.contract.queryFilter(withdrawalFilter, fromBlock),
+      this.contract.queryFilter(actionFilter, fromBlock)
     ]);
-    const events = [...deposits, ...withdrawals].sort((a, b) => {
+    const events = [...deposits, ...withdrawals, ...actions].sort((a, b) => {
       if (a.blockNumber === b.blockNumber) {
+        if (a.transactionIndex === b.transactionIndex) {
+          return a.logIndex - b.logIndex;
+        }
         return a.transactionIndex - b.transactionIndex;
       }
       return a.blockNumber - b.blockNumber;
     });
-    const leafMap = /* @__PURE__ */ new Map();
-    deposits.forEach((e) => {
-      leafMap.set(Number(e.args.insertedLeafIndex), e.args.commitment);
-    });
-    withdrawals.forEach((e) => {
-      leafMap.set(Number(e.args.insertedLeafIndex), e.args.newCommitment);
-    });
-    const sortedIndices = Array.from(leafMap.keys()).sort((a, b) => a - b);
-    const leaves = sortedIndices.map((i) => leafMap.get(i));
+    const leaves = [];
+    for (const event of events) {
+      if (event.fragment?.name === "PrivacyProtocolPool__Deposit") {
+        leaves.push(this.normalizePublicInputWord(event.args.commitment));
+        continue;
+      }
+      if (event.fragment?.name === "PrivacyProtocolPool__Withdrawal") {
+        leaves.push(this.normalizePublicInputWord(event.args.newCommitment));
+        continue;
+      }
+      if (event.fragment?.name === "PrivacyProtocolPool__ActionExecuted") {
+        const tx = await this.provider.getTransaction(event.transactionHash);
+        if (!tx?.data) {
+          continue;
+        }
+        const parsed = this.contract.interface.parseTransaction({ data: tx.data });
+        if (!parsed || parsed.name !== "executeAction") {
+          continue;
+        }
+        const request = parsed.args?.[0];
+        const newCommitment = request?.newCommitment ?? request?.[8] ?? void 0;
+        if (!newCommitment) {
+          continue;
+        }
+        leaves.push(this.normalizePublicInputWord(newCommitment));
+      }
+    }
     return leaves;
   }
 };
@@ -855,4 +930,4 @@ export {
   PrivacyProtocolSDK,
   core_default
 };
-//# sourceMappingURL=chunk-P6J6LX2M.mjs.map
+//# sourceMappingURL=chunk-53HXHJOO.mjs.map
