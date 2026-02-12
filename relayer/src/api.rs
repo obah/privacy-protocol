@@ -18,7 +18,7 @@ use uuid::Uuid;
 pub fn build_router(state: AppState) -> Router {
     Router::new()
         .route("/relay", post(relay))
-        .route("/relay/:request_id", get(relay_status))
+        .route("/relay/{request_id}", get(relay_status))
         .route("/health", get(health))
         .with_state(state)
 }
