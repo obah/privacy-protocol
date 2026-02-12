@@ -29,3 +29,5 @@ sdk/node_modules
 
 frontend/.npm-cache
 sdk/.npm-cache
+
+nextra-docs/.next

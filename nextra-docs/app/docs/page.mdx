@@ -1,69 +1,61 @@
-import { Callout, Tabs, Steps } from "nextra/components";
-import { Shield, Zap, Lock } from "lucide-react";
+import { Callout, Steps, Tabs } from "nextra/components";
 
-# Privacy Protocol SDK
+# Privacy Protocol Documentation
 
-**Privacy Protocol** is the modular privacy layer for the EVM. Powered by zero-knowledge proofs, it enables developers to seamlessly integrate privacy into any dApp without sacrificing composability.
+Privacy Protocol is a relayer-first privacy middleware for EVM dApps.
 
-<Callout type="info" emoji="👻">
-  **New Release:** The SDK now supports **Arbitrum Stylus** and **Optimism**.
-  Check the [Changelog](/changelog) for details.
-</Callout>
-
-## Quick Start
-
-Get up and running in less than 5 minutes.
+## Install
 
 <Tabs items={["npm", "yarn", "pnpm"]}>
-  <Tabs.Tab>```bash npm install @ghostly/sdk @ghostly/react ```</Tabs.Tab>
-  <Tabs.Tab>```bash yarn add @ghostly/sdk @ghostly/react ```</Tabs.Tab>
-  <Tabs.Tab>```bash pnpm add @ghostly/sdk @ghostly/react ```</Tabs.Tab>
+  <Tabs.Tab>
+    ```bash
+    npm install privacy-protocol ethers
+    ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+    ```bash
+    yarn add privacy-protocol ethers
+    ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+    ```bash
+    pnpm add privacy-protocol ethers
+    ```
+  </Tabs.Tab>
 </Tabs>
 
-## How It Works
+<Callout type="info" emoji="⚡">
+  Circuit artifacts are bundled in the SDK. No manual circuit import is required.
+</Callout>
+
+## Integration Paths
+
+- `privacy-protocol/core`
+- `privacy-protocol/hooks`
+
+## Relay Lifecycle
+
+Private actions move through:
+
+1. `queued` (`relay:<request_id>`)
+2. `submitted` (on-chain tx hash available)
+3. `confirmed` (receipt success or revert)
+
+## Developer Flow
 
 <Steps>
-### Install and Enable
-Install the SDK to wrap standard wallets. Enable shielded transactions with zero changes to your backend logic.
+### Configure SDK
+Set pool + relayer values in app environment and instantiate the SDK.
 
-### Client-Side Proving
+### Execute Private Actions
+Use core methods or hooks for deposit, executeAction, and withdraw.
 
-The SDK abstracts ZK complexity, generating local proofs (Noir/bb.js) to authorize intents without revealing the signer's identity.
-
-### Relayed Execution
-
-Proofs are verified on-chain. The protocol executes calls to your contract via a fresh, **ephemeral proxy**.
-
-### Composable Settlement
-
-Execute standard logic (mint, swap). Outputs are automatically routed back to the user's shielded balance via the UTXO model.
-
+### Render Lifecycle
+Show queued/submitted/confirmed states in transaction UI.
 </Steps>
 
-## Next Steps
+## Operator Docs
 
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-  <a
-    href="/docs/guides/integration"
-    className="p-4 border rounded-lg hover:border-blue-500 transition-colors"
-  >
-    <div className="flex items-center gap-2 font-bold mb-2">
-      <Shield className="w-5 h-5" /> Integration Guide
-    </div>
-    <p className="text-gray-500 text-sm">
-      Learn how to add the `useShield` hook to your dApp.
-    </p>
-  </a>
+Run a relayer node and start serving private transaction traffic:
 
-  <a
-    href="/docs/core-sdk"
-    className="p-4 border rounded-lg hover:border-blue-500 transition-colors"
-  >
-    <div className="flex items-center gap-2 font-bold mb-2">
-      <Zap className="w-5 h-5" /> Core SDK Reference
-    </div>
-    <p className="text-gray-500 text-sm">
-      Low-level API for backend bots and scripts.
-    </p>
-  </a>
-</div>
+- [Run a Relayer Node](/docs/operators/run-relayer-node)

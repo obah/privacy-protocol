@@ -9,9 +9,15 @@
 
 ## React Hooks
 
-- [useShield](hooks/useShield.md)
-- [usePrivateExecute](hooks/usePrivateExecute.md)
+- [useDeposit](hooks/useDeposit.md)
+- [useExecuteAction](hooks/useExecuteAction.md)
+- [useWithdraw](hooks/useWithdraw.md)
+- [usePrivateTransactionDetails](hooks/usePrivateTransactionDetails.md)
 
 ## Core SDK
 
 - [Client Reference](core-sdk/client.md)
+
+## Operators
+
+- [Run a Relayer Node](operators/run-relayer-node.md)

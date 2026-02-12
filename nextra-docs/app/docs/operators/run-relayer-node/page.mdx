@@ -1,0 +1,78 @@
+# Run a Relayer Node
+
+This manual covers production setup for a Privacy Protocol relayer operator.
+
+## Why Operate a Relayer
+
+- Earn relay fees for private transactions your node submits.
+- Strengthen censorship resistance for the protocol.
+- Run lightweight Rust infrastructure on standard VPS setups.
+
+## Prerequisites
+
+- Rust stable toolchain (`rustup`, `cargo`)
+- Funded EOA dedicated to relayer gas
+- RPC endpoint for target chain
+- Deployed `PrivacyProtocolPool` address
+
+## Configure Environment
+
+Create `relayer/.env`:
+
+```bash
+RELAYER_RPC_URL=https://your-rpc-provider
+RELAYER_PRIVATE_KEY=0xyour_relayer_private_key
+FAN_POOL_ADDRESS=0xyour_privacy_protocol_pool
+RELAYER_BIND_ADDR=0.0.0.0:8787
+RELAYER_PUBLIC_INPUT_RELAYER_INDEX=6
+RELAYER_PUBLIC_INPUT_FEE_INDEX=7
+RELAYER_BATCH_SIZE=10
+RELAYER_BATCH_MAX_WAIT_SECS=15
+RELAYER_RETRY_MAX_ATTEMPTS=5
+RELAYER_RETRY_BASE_DELAY_MS=500
+RELAYER_MEMPOOL_PATH=./data/mempool.json
+```
+
+## Build and Run
+
+```bash
+cd relayer
+cargo build --release
+cargo run --release
+```
+
+## API Surface
+
+- `POST /relay`
+- `GET /relay/{request_id}`
+- `GET /health`
+
+Health check:
+
+```bash
+curl http://127.0.0.1:8787/health
+```
+
+## Render Deployment Example
+
+1. Create a new Web Service from this repo.
+2. Set Root Directory to `relayer`.
+3. Build Command: `cargo build --release`.
+4. Start Command: `RELAYER_BIND_ADDR=0.0.0.0:$PORT ./target/release/privacy-protocol-relayer`.
+5. Add the `.env` values in Render secrets.
+6. Fund the relayer signer with native gas token.
+
+## Security Checklist
+
+- Use a dedicated relayer key.
+- Store private key only in secret manager.
+- Monitor health endpoint and submission failures.
+- Rotate key if compromise is suspected.
+- Back up mempool persistence file if required.
+
+## Performance Tuning
+
+- Lower `RELAYER_BATCH_SIZE` for faster user finality.
+- Raise `RELAYER_BATCH_SIZE` for higher batching efficiency.
+- Lower `RELAYER_BATCH_MAX_WAIT_SECS` to reduce tail latency.
+- Tune retry values to match RPC quality.

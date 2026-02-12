@@ -1,26 +1,18 @@
 # Installation
 
-To get started with the Privacy Protocol SDK, you need to install the core package and its dependencies.
+Install Privacy Protocol in your app and configure it with your pool + relayer.
 
 ## Prerequisites
 
-- Node.js (v18 or later recommended)
-- `ethers` (v6) for blockchain interaction
+- Node.js 18+
+- `ethers` v6
+- A deployed `PrivacyProtocolPool` contract
+- A reachable Privacy Protocol relayer endpoint
 
 ## Install Dependencies
 
-Install the required packages using npm or yarn:
-
 ```bash
-npm install ethers @aztec/bb.js @noir-lang/noir_js
+npm install privacy-protocol ethers
 ```
 
-or
-
-```bash
-yarn add ethers @aztec/bb.js @noir-lang/noir_js
-```
-
-## Setup
-
-You will also need the compiled Noir circuit artifacts. Ensure you have the `circuits.json` file available in your project, which contains the bytecode for the privacy circuit.
+No manual circuit import is required. Circuit artifacts are bundled in the SDK package.

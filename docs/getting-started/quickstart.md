@@ -1,71 +1,85 @@
 # Quickstart
 
-This guide will walk you through the basic flow of initializing the SDK, depositing funds (shielding), and withdrawing them (unshielding).
+This guide shows the minimal relayer-first integration flow.
 
 ## 1. Initialize the SDK
 
-First, import the SDK and initialize it with an Ethers provider and the contract address.
-
 ```typescript
 import { ethers } from "ethers";
-import { PrivacyProtocolSDK } from "privacy-protocol-sdk"; // Adjust import path
-import circuit from "./path/to/circuits.json";
+import { PrivacyProtocolSDK } from "privacy-protocol/core";
 
-const RPC_URL = "https://your-rpc-url.com";
-const CONTRACT_ADDRESS = "0x..."; // Deployed PrivacyProtocolPool address
+const provider = new ethers.BrowserProvider(window.ethereum);
+const signer = await provider.getSigner();
 
-const provider = new ethers.JsonRpcProvider(RPC_URL);
-const sdk = new PrivacyProtocolSDK(provider, CONTRACT_ADDRESS, circuit);
+const sdk = new PrivacyProtocolSDK(
+  provider,
+  process.env.NEXT_PUBLIC_PRIVACY_PROTOCOL_POOL_ADDRESS!,
+  undefined,
+  {
+    relayer: {
+      url: process.env.NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_URL!,
+      endpoint:
+        process.env.NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_ENDPOINT ?? "/relay",
+      relayerPublicInputIndex: Number(
+        process.env.NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_PUBLIC_INPUT_INDEX ??
+          "6"
+      ),
+      relayerAddress:
+        process.env.NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_ADDRESS!,
+      feePublicInputIndex: Number(
+        process.env.NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_FEE_INPUT_INDEX ?? "7"
+      ),
+      relayerFeeWei:
+        process.env.NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_FEE_WEI ??
+        "1000000000000000",
+    },
+  }
+);
 ```
 
-## 2. Shield Assets (Deposit)
+## 2. Deposit (Shield)
 
-To shield assets, you deposit tokens into the pool. This generates a secret note.
-
-```typescript
-// Get a signer (e.g., from a wallet)
-const signer = await provider.getSigner();
-const tokenAddress = "0x..."; // ERC20 Token Address
+```ts
+const tokenAddress = "0x...";
 const amount = ethers.parseEther("1.0");
-
-// Approve the pool to spend tokens
-const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
-await tokenContract.approve(CONTRACT_ADDRESS, amount);
+const poolAddress = process.env.NEXT_PUBLIC_PRIVACY_PROTOCOL_POOL_ADDRESS!;
+const token = new ethers.Contract(
+  tokenAddress,
+  ["function approve(address spender,uint256 amount) external returns (bool)"],
+  signer
+);
+await token.approve(poolAddress, amount);
 
 // Deposit
 const result = await sdk.deposit(tokenAddress, amount, signer);
-
-console.log("Deposit successful!");
-console.log("Secret:", result.secret);
-console.log("Nullifier:", result.nullifier);
-console.log("Commitment:", result.commitment);
-
-// IMPORTANT: Save 'secret' and 'nullifier' securely! They are needed to access funds.
 ```
 
-## 3. Unshield Assets (Withdraw)
+Persist `result.secret`, `result.nullifier`, and `result.commitment` securely.
 
-To withdraw anonymously, you need the secret and nullifier from the deposit step.
+## 3. Execute a Private Action
 
-```typescript
-// Sync the Merkle Tree to get current state
+```ts
 const leaves = await sdk.getLeaves();
-
-const recipient = "0x..."; // Fresh wallet address
-const totalAmountInPool = amount; // The amount associated with the note
-
-const withdrawResult = await sdk.withdraw(
+const actionResult = await sdk.executeAction(
   tokenAddress,
-  recipient,
-  amount, // Amount to withdraw
+  amount,
+  "0xTargetContract",
+  "0xEncodedCalldata",
+  ethers.keccak256(result.secret),
   result.secret,
   result.nullifier,
-  totalAmountInPool,
+  amount,
   leaves,
   signer
 );
+```
 
-console.log("Withdrawal successful!", withdrawResult.txHash);
-// New secrets are generated for any remaining change (if partial withdraw)
-console.log("New Secret:", withdrawResult.newSecret);
+`actionResult.txHash` returns a relay lifecycle id like `relay:<request_id>` first, then maps to on-chain tx metadata when submitted.
+
+## 4. Track Relay Lifecycle
+
+```ts
+const details = await sdk.getPrivateTransactionDetails(actionResult.txHash);
+console.log(details.status); // queued | submitted | confirmed
+console.log(details.txHash); // on-chain hash when submitted
 ```

@@ -43,6 +43,12 @@ export const Navbar = () => {
             Docs
           </Link>
           <Link
+            href="/network"
+            className="hover:text-primary rounded-sm px-4 py-2 text-sm font-medium backdrop-blur-xs transition-colors"
+          >
+            Relayer
+          </Link>
+          <Link
             href="/demo"
             className="hover:text-primary rounded-sm px-4 py-2 text-sm font-medium backdrop-blur-xs transition-colors"
           >

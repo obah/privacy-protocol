@@ -1,54 +1,37 @@
 # Client Reference
 
-The `PrivacyProtocolSDK` is the main entry point for interacting with the protocol.
+`PrivacyProtocolSDK` is the core API for deposits, private actions, withdrawals, and relay lifecycle inspection.
 
-## `PrivacyProtocolSDK`
+## Constructor
 
-### Constructor
-
-```typescript
-constructor(provider: Provider, contractAddress: string, circuit: any)
+```ts
+new PrivacyProtocolSDK(provider, poolAddress, undefined, {
+  relayer: {
+    url: "https://your-relayer.example.com",
+    endpoint: "/relay",
+    relayerPublicInputIndex: 6,
+    relayerAddress: "0xRelayerAddress",
+    feePublicInputIndex: 7,
+    relayerFeeWei: "1000000000000000",
+  },
+});
 ```
 
--   `provider`: An `ethers.Provider` instance.
--   `contractAddress`: The address of the `PrivacyProtocolPool` contract.
--   `circuit`: The compiled Noir circuit JSON object.
+- `provider`: Ethers provider.
+- `poolAddress`: deployed `PrivacyProtocolPool`.
+- `circuit`: optional; SDK bundles default circuit.
+- `options.relayer`: relayer transport settings used by private calls.
 
----
+## `deposit`
 
-### `connect`
-
-```typescript
-connect(signer: Signer): Contract
+```ts
+await sdk.deposit(token, amount, signer);
 ```
 
-Connects a signer to the internal contract instance for write operations.
+Returns:
 
--   `signer`: An `ethers.Signer`.
--   **Returns**: The connected `Contract` instance.
-
----
-
-### `deposit`
-
-Shields ERC20 tokens by depositing them into the pool.
-
-```typescript
-async deposit(
-  token: string,
-  amount: string | number | bigint,
-  signer: Signer
-): Promise<DepositResult>
-```
-
--   `token`: Address of the ERC20 token.
--   `amount`: Amount to deposit.
--   `signer`: The signer executing the transaction.
--   **Returns**: `Promise<DepositResult>` containing the generated secret, nullifier, and commitment.
-
-**DepositResult Interface:**
-```typescript
-interface DepositResult {
+```ts
+{
   secret: string;
   nullifier: string;
   commitment: string;
@@ -56,81 +39,69 @@ interface DepositResult {
 }
 ```
 
----
+## `withdraw`
 
-### `withdraw`
-
-Unshields tokens by withdrawing them to a recipient address. Generates a ZK proof locally.
-
-```typescript
-async withdraw(
-  token: string,
-  recipient: string,
-  amount: string | number | bigint,
-  secret: string,
-  nullifier: string,
-  amountInPool: string | number | bigint,
-  leaves: string[],
-  signer: Signer
-): Promise<ExecutionResult>
+```ts
+await sdk.withdraw(
+  token,
+  recipient,
+  amount,
+  secret,
+  nullifier,
+  amountInPool,
+  leaves,
+  signer,
+  executionOptions
+);
 ```
 
--   `token`: Token address.
--   `recipient`: Address receiving the funds.
--   `amount`: Amount to withdraw.
--   `secret`: The secret key from the note (hex string).
--   `nullifier`: The nullifier from the note (hex string).
--   `amountInPool`: The total value of the note being spent.
--   `leaves`: Current Merkle Tree leaves (fetch via `getLeaves`).
--   `signer`: Transaction signer (relayer or user).
--   **Returns**: `Promise<ExecutionResult>`
+Returns an execution result containing updated note values and relay metadata.
 
-**ExecutionResult Interface:**
-```typescript
-interface ExecutionResult {
-  txHash: string;
-  newSecret: string;
-  newNullifier: string;
-  newCommitment: string;
-  proxyAddress?: string;
-}
+## `executeAction`
+
+```ts
+await sdk.executeAction(
+  token,
+  amount,
+  target,
+  data,
+  actionId,
+  secret,
+  nullifier,
+  amountInPool,
+  leaves,
+  signer,
+  executionOptions
+);
 ```
 
----
+`actionId` must be `keccak256(secret)`.
 
-### `executeAction`
+## `getLeaves`
 
-Executes an arbitrary call on an external contract using a temporary proxy, funded by the shielded note.
-
-```typescript
-async executeAction(
-  token: string,
-  amount: string | number | bigint,
-  target: string,
-  data: string,
-  actionId: string,
-  secret: string,
-  nullifier: string,
-  amountInPool: string | number | bigint,
-  leaves: string[],
-  signer: Signer
-): Promise<ExecutionResult>
+```ts
+await sdk.getLeaves(fromBlock);
 ```
 
--   `target`: The target contract address to call.
--   `data`: The calldata for the transaction.
--   `actionId`: Must be `keccak256(secret)` so proxy withdrawal can be authorized with that secret.
--   **Returns**: `Promise<ExecutionResult>` containing the new note details and the deployed proxy address.
+Fetches current commitments used to rebuild the Merkle tree for proving.
 
----
+## `getPrivateTransactionDetails`
 
-### `getLeaves`
-
-Fetches all active commitments (leaves) from the contract events to rebuild the Merkle Tree.
-
-```typescript
-async getLeaves(fromBlock: number = 0): Promise<string[]>
+```ts
+await sdk.getPrivateTransactionDetails(txHashOrRelayId);
 ```
 
--   `fromBlock`: Block number to start searching from (default: 0).
--   **Returns**: An array of commitment strings sorted by insertion index.
+Accepts either:
+
+- relay id format: `relay:<request_id>`
+- on-chain tx hash: `0x...`
+
+Returns normalized transaction metadata:
+
+- `status`: `pending | success | reverted`
+- `txHash`
+- `initiator`
+- `gasPayer`
+- `to`
+- `method`
+- `parameters`
