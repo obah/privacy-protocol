@@ -24,11 +24,23 @@ export const Navbar = () => {
     <nav className="bg-background/50 fixed top-0 right-0 left-0 z-50 px-8 py-5 backdrop-blur-xl">
       <div className="flex items-center justify-between rounded-sm border border-white/10">
         <Link href="/" className="flex items-center gap-2">
-          {isIncognito ? (
-            <Image src="/dark-logo.svg" alt="Logo" width={24} height={24} />
-          ) : (
-            <Image src="/light-logo.svg" alt="Logo" width={24} height={24} />
-          )}
+          <span className="relative h-6 w-6">
+            <Image
+              src="/light-logo.svg"
+              alt="Logo"
+              fill
+              className="block dark:hidden"
+              priority
+            />
+            <Image
+              src="/dark-logo.svg"
+              alt="Logo"
+              fill
+              className="hidden dark:block"
+              priority
+            />
+          </span>
+
           <span className="text-lg font-semibold tracking-tight">
             Privacy Protocol
           </span>
@@ -43,16 +55,16 @@ export const Navbar = () => {
             Docs
           </Link>
           <Link
-            href="/network"
-            className="hover:text-primary rounded-sm px-4 py-2 text-sm font-medium backdrop-blur-xs transition-colors"
-          >
-            Relayer
-          </Link>
-          <Link
             href="/demo"
             className="hover:text-primary rounded-sm px-4 py-2 text-sm font-medium backdrop-blur-xs transition-colors"
           >
             Demo
+          </Link>
+          <Link
+            href="/network"
+            className="hover:text-primary rounded-sm px-4 py-2 text-sm font-medium backdrop-blur-xs transition-colors"
+          >
+            Relayer
           </Link>
         </div>
 
