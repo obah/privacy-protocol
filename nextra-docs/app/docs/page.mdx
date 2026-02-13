@@ -7,25 +7,14 @@ Privacy Protocol is a relayer-first privacy middleware for EVM dApps.
 ## Install
 
 <Tabs items={["npm", "yarn", "pnpm"]}>
-  <Tabs.Tab>
-    ```bash
-    npm install privacy-protocol ethers
-    ```
-  </Tabs.Tab>
-  <Tabs.Tab>
-    ```bash
-    yarn add privacy-protocol ethers
-    ```
-  </Tabs.Tab>
-  <Tabs.Tab>
-    ```bash
-    pnpm add privacy-protocol ethers
-    ```
-  </Tabs.Tab>
+  <Tabs.Tab>```bash npm install privacy-protocol ethers ```</Tabs.Tab>
+  <Tabs.Tab>```bash yarn add privacy-protocol ethers ```</Tabs.Tab>
+  <Tabs.Tab>```bash pnpm add privacy-protocol ethers ```</Tabs.Tab>
 </Tabs>
 
 <Callout type="info" emoji="⚡">
-  Circuit artifacts are bundled in the SDK. No manual circuit import is required.
+  Circuit artifacts are bundled in the SDK. No manual circuit import is
+  required.
 </Callout>
 
 ## Integration Paths
@@ -48,10 +37,13 @@ Private actions move through:
 Set pool + relayer values in app environment and instantiate the SDK.
 
 ### Execute Private Actions
+
 Use core methods or hooks for deposit, executeAction, and withdraw.
 
 ### Render Lifecycle
+
 Show queued/submitted/confirmed states in transaction UI.
+
 </Steps>
 
 ## Operator Docs
@@ -59,3 +51,11 @@ Show queued/submitted/confirmed states in transaction UI.
 Run a relayer node and start serving private transaction traffic:
 
 - [Run a Relayer Node](/docs/operators/run-relayer-node)
+
+## Deployments
+
+### Arbitrum Sepolia
+
+| Contract              | Address                                      |
+| --------------------- | -------------------------------------------- |
+| `PrivacyProtocolPool` | `0xA0806cf43f5E9A2C42c8291676EE814b39A6413e` |

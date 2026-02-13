@@ -25,7 +25,7 @@ export const HeroSection = () => {
     "Perps",
     "Web3 infra",
     "AI agents",
-    "Next project",
+    "next project",
   ];
 
   const colors = [

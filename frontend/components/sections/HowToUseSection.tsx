@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { motion } from "framer-motion";
 import { Terminal, Key, Zap } from "lucide-react";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
@@ -9,40 +8,54 @@ const steps = [
   {
     icon: Terminal,
     title: "Install the SDK",
-    code: `npm install privacy-protocol`,
+    code: `npm i privacy-protocol ethers`,
     description:
       "Add the Privacy Protocol SDK to your project with a single command.",
   },
   {
     icon: Key,
-    title: "Initialize & Deposit",
-    code: `const sdk = new PrivacyProtocolSDK(provider, contractAddress, circuit);
+    title: "Initialize the SDK",
+    code: `import { PrivacyProtocolSDK } from "privacy-protocol/core";
 
-const { secret, nullifier, commitment } = await sdk.deposit(
+const sdk = new PrivacyProtocolSDK(provider, poolAddress, undefined, {
+  relayer: {
+    url: relayerUrl,
+    endpoint: "/relay",
+    relayerPublicInputIndex: 6,
+    relayerAddress,
+    feePublicInputIndex: 7,
+    relayerFeeWei: "1000000000000000",
+  },
+});
+
+const depositResult = await sdk.deposit(
   tokenAddress,
   amount,
   signer
 );`,
     description:
-      "Create a privacy pool instance and deposit tokens to receive your secret keys.",
+      "Configure pool + relayer once, then deposit to mint your first private note.",
   },
   {
     icon: Zap,
-    title: "Execute Private Actions",
-    code: `const { txHash, proxyAddress } = await sdk.executeAction(
+    title: "Execute Privately & Track Relay Status",
+    code: `const result = await sdk.executeAction(
   tokenAddress,
   amount,
   targetContract,
   callData,
-  actionId,
+  ethers.keccak256(secret),
   secret,
   nullifier,
   totalAmount,
   leaves,
   signer
-);`,
+);
+
+const details = await sdk.getPrivateTransactionDetails(result.txHash);
+// queued -> submitted -> confirmed`,
     description:
-      "Interact with any dApp privately through the SDK's action executor.",
+      "Private actions return relay IDs first and then resolve to on-chain transaction metadata.",
   },
 ];
 
