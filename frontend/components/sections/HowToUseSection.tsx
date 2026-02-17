@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Terminal, Key, Zap } from "lucide-react";
+import { Terminal, Settings, Zap } from "lucide-react";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 
 // const steps = [
@@ -59,45 +59,79 @@ import { GlowingEffect } from "@/components/ui/glowing-effect";
 //   },
 // ];
 
+// const steps = [
+//   {
+//     icon: Terminal,
+//     title: "Install the SDK",
+//     code: `npm i privacy-protocol ethers`,
+//     description:
+//       "Add the Privacy Protocol SDK to your project with a single command.",
+//   },
+//   {
+//     icon: Key,
+//     title: "Initialize the SDK",
+//     code: `import { PrivacyProtocolSDK } from "privacy-protocol/core";
+
+// const sdk = new PrivacyProtocolSDK(provider, poolAddress);
+
+// const depositResult = await sdk.deposit(
+//   tokenAddress,
+//   amount,
+//   signer
+// );`,
+//     description:
+//       "Configure pool + relayer once, then deposit to mint your first private note.",
+//   },
+//   {
+//     icon: Zap,
+//     title: "Execute Privately & Track Relay Status",
+//     code: `const result = await sdk.executeAction(
+//   tokenAddress, //optional
+//   amount,
+//   targetContract,
+//   callData,
+//   zkData,
+//   signer
+// );
+
+// const details = await sdk.getPrivateTransactionDetails(result.txHash);
+// // queued -> submitted -> confirmed`,
+//     description:
+//       "Private actions return relay IDs first and then resolve to on-chain transaction metadata.",
+//   },
+// ];
+
 const steps = [
   {
     icon: Terminal,
     title: "Install the SDK",
     code: `npm i privacy-protocol ethers`,
-    description:
-      "Add the Privacy Protocol SDK to your project with a single command.",
+    description: "Install the SDK and core dependencies to get started.",
   },
   {
-    icon: Key,
-    title: "Initialize the SDK",
-    code: `import { PrivacyProtocolSDK } from "privacy-protocol/core";
+    icon: Settings,
+    title: "Set up SDK",
+    code: `import { useDeposit, useExecuteAction } from "privacy-protocol/hooks";
 
-const sdk = new PrivacyProtocolSDK(provider, poolAddress);
-
-const depositResult = await sdk.deposit(
-  tokenAddress,
-  amount,
-  signer
-);`,
-    description:
-      "Configure pool + relayer once, then deposit to mint your first private note.",
+const config = {
+  poolAddress,
+  provider,
+  signer,
+  relayer,
+};`,
+    description: "Configure the SDK with your pool and relayer details.",
   },
   {
     icon: Zap,
-    title: "Execute Privately & Track Relay Status",
-    code: `const result = await sdk.executeAction(
-  tokenAddress, //optional
-  amount,
-  targetContract,
-  callData,
-  zkData,
-  signer
-);
+    title: "Use Hooks",
+    code: `// 1. Initialize Hooks
+const { deposit } = useDeposit(config);
+const { executeAction } = useExecuteAction(config);
 
-const details = await sdk.getPrivateTransactionDetails(result.txHash);
-// queued -> submitted -> confirmed`,
-    description:
-      "Private actions return relay IDs first and then resolve to on-chain transaction metadata.",
+// 2. Execute Private Transactions
+await deposit({ token, amount });
+await executeAction({ target, data, amount });`,
+    description: "Deposit funds and execute private actions with ease.",
   },
 ];
 
