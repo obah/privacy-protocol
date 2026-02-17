@@ -4,6 +4,61 @@ import { motion } from "framer-motion";
 import { Terminal, Key, Zap } from "lucide-react";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 
+// const steps = [
+//   {
+//     icon: Terminal,
+//     title: "Install the SDK",
+//     code: `npm i privacy-protocol ethers`,
+//     description:
+//       "Add the Privacy Protocol SDK to your project with a single command.",
+//   },
+//   {
+//     icon: Key,
+//     title: "Initialize the SDK",
+//     code: `import { PrivacyProtocolSDK } from "privacy-protocol/core";
+
+// const sdk = new PrivacyProtocolSDK(provider, poolAddress, undefined, {
+//   relayer: {
+//     url: relayerUrl,
+//     endpoint: "/relay",
+//     relayerPublicInputIndex: 6,
+//     relayerAddress,
+//     feePublicInputIndex: 7,
+//     relayerFeeWei: "1000000000000000",
+//   },
+// });
+
+// const depositResult = await sdk.deposit(
+//   tokenAddress,
+//   amount,
+//   signer
+// );`,
+//     description:
+//       "Configure pool + relayer once, then deposit to mint your first private note.",
+//   },
+//   {
+//     icon: Zap,
+//     title: "Execute Privately & Track Relay Status",
+//     code: `const result = await sdk.executeAction(
+//   tokenAddress,
+//   amount,
+//   targetContract,
+//   callData,
+//   ethers.keccak256(secret),
+//   secret,
+//   nullifier,
+//   totalAmount,
+//   leaves,
+//   signer
+// );
+
+// const details = await sdk.getPrivateTransactionDetails(result.txHash);
+// // queued -> submitted -> confirmed`,
+//     description:
+//       "Private actions return relay IDs first and then resolve to on-chain transaction metadata.",
+//   },
+// ];
+
 const steps = [
   {
     icon: Terminal,
@@ -17,16 +72,7 @@ const steps = [
     title: "Initialize the SDK",
     code: `import { PrivacyProtocolSDK } from "privacy-protocol/core";
 
-const sdk = new PrivacyProtocolSDK(provider, poolAddress, undefined, {
-  relayer: {
-    url: relayerUrl,
-    endpoint: "/relay",
-    relayerPublicInputIndex: 6,
-    relayerAddress,
-    feePublicInputIndex: 7,
-    relayerFeeWei: "1000000000000000",
-  },
-});
+const sdk = new PrivacyProtocolSDK(provider, poolAddress);
 
 const depositResult = await sdk.deposit(
   tokenAddress,
@@ -40,15 +86,11 @@ const depositResult = await sdk.deposit(
     icon: Zap,
     title: "Execute Privately & Track Relay Status",
     code: `const result = await sdk.executeAction(
-  tokenAddress,
+  tokenAddress, //optional
   amount,
   targetContract,
   callData,
-  ethers.keccak256(secret),
-  secret,
-  nullifier,
-  totalAmount,
-  leaves,
+  zkData,
   signer
 );
 

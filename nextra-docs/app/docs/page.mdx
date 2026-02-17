@@ -7,9 +7,9 @@ Privacy Protocol is a relayer-first privacy middleware for EVM dApps.
 ## Install
 
 <Tabs items={["npm", "yarn", "pnpm"]}>
-  <Tabs.Tab>```bash npm install privacy-protocol ethers ```</Tabs.Tab>
-  <Tabs.Tab>```bash yarn add privacy-protocol ethers ```</Tabs.Tab>
-  <Tabs.Tab>```bash pnpm add privacy-protocol ethers ```</Tabs.Tab>
+  <Tabs.Tab>```npm install privacy-protocol ethers ```</Tabs.Tab>
+  <Tabs.Tab>```yarn add privacy-protocol ethers ```</Tabs.Tab>
+  <Tabs.Tab>```pnpm add privacy-protocol ethers ```</Tabs.Tab>
 </Tabs>
 
 <Callout type="info" emoji="⚡">
@@ -46,7 +46,121 @@ Show queued/submitted/confirmed states in transaction UI.
 
 </Steps>
 
-## Operator Docs
+## React Hooks
+
+Required imports:
+
+```ts
+import {
+  useDeposit,
+  useExecuteAction,
+  useWithdraw,
+  usePrivateTransactionDetails,
+} from "privacy-protocol/hooks";
+```
+
+### useDeposit
+
+Creates a private note by depositing into the pool.
+
+```ts
+const { deposit, note, isPending, error } = useDeposit({
+  poolAddress,
+  provider,
+  signer,
+  relayer,
+});
+
+// Usage
+await deposit({
+  token: tokenAddress,
+  amount: amountWei,
+});
+```
+
+**Returns:**
+
+- `deposit(args)`: executes pool deposit
+- `note`: generated note object (`secret`, `nullifier`, `commitment`)
+- `isPending`: request state
+- `error`: last error
+
+### useExecuteAction
+
+Performs private arbitrary calls through the pool and relayer.
+
+```ts
+const { executeAction, nextNote, isPending, error } = useExecuteAction({
+  poolAddress,
+  provider,
+  signer,
+  relayer,
+});
+
+// Usage
+await executeAction({
+  token: tokenAddress,
+  amount: amountWei,
+  target: targetContract,
+  data: calldata,
+  note: existingNote, // optional if secret+nullifier passed
+});
+```
+
+**Returns:**
+
+- `executeAction(args)`: executes the action
+- `nextNote`: new note with remaining balance
+- `isPending`: request state
+- `error`: last error
+
+### useWithdraw
+
+Spends a private note and withdraws to a recipient address.
+
+```ts
+const { withdraw, nextNote, isPending, error } = useWithdraw({
+  poolAddress,
+  provider,
+  signer,
+  relayer,
+});
+
+// Usage
+await withdraw({
+  token: tokenAddress,
+  recipient: recipientAddress,
+  amount: amountWei,
+  note: existingNote,
+});
+```
+
+**Returns:**
+
+- `withdraw(args)`: executes the withdrawal
+- `nextNote`: new note with remaining balance (if any)
+- `isPending`: request state
+- `error`: last error
+
+### usePrivateTransactionDetails
+
+Resolves relay lifecycle and on-chain metadata.
+
+```ts
+const { data, isLoading, error } = usePrivateTransactionDetails({
+  poolAddress,
+  provider,
+  relayer,
+  txHash, // "relay:<id>" or "0x..."
+  enabled: true, // optional
+});
+```
+
+**Returns:**
+
+- `data`: object containing `status` (pending/success/reverted), `txHash`, `initiator`, `gasPayer`, `to`, `method`, `parameters`
+- `isLoading`: loading state
+- `error`: error state
 
 Run a relayer node and start serving private transaction traffic:
 
