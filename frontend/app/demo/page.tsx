@@ -12,7 +12,6 @@ import type {
 import {
   DEMO_DAO_ABI,
   DEMO_DEFI_ABI,
-  DEMO_RELAYER,
   ERC20_ABI,
 } from "@/lib/demo-config";
 import { cn } from "@/lib/utils";
@@ -28,6 +27,7 @@ import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { decodeFunctionData, type Hex } from "viem";
 import { useTransaction, useWaitForTransactionReceipt } from "wagmi";
+import { DEFAULT_RELAYER_TRANSPORT_CONFIG } from "privacy-protocol/core";
 
 type DemoTab = "dao" | "defi";
 
@@ -44,12 +44,18 @@ interface PrivateTransactionLog extends PrivateTransactionEvent {
 const ARBITRUM_SEPOLIA_EXPLORER = "https://sepolia.arbiscan.io";
 const NORMAL_DECODE_ABI = [...DEMO_DAO_ABI, ...DEMO_DEFI_ABI, ...ERC20_ABI];
 const RELAY_STATUS_POLL_MS = 2_000;
+const RELAYER_STATUS_BASE_URL =
+  process.env.NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_URL ??
+  DEFAULT_RELAYER_TRANSPORT_CONFIG.url;
+const RELAYER_STATUS_ENDPOINT =
+  process.env.NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_ENDPOINT ??
+  DEFAULT_RELAYER_TRANSPORT_CONFIG.endpoint;
 
 function buildRelayStatusUrl(requestId: string): string {
-  const endpoint = DEMO_RELAYER.endpoint ?? "/relay";
-  const base = DEMO_RELAYER.url.endsWith("/")
-    ? DEMO_RELAYER.url.slice(0, -1)
-    : DEMO_RELAYER.url;
+  const endpoint = RELAYER_STATUS_ENDPOINT ?? "/relay";
+  const base = RELAYER_STATUS_BASE_URL.endsWith("/")
+    ? RELAYER_STATUS_BASE_URL.slice(0, -1)
+    : RELAYER_STATUS_BASE_URL;
   const normalizedEndpoint = endpoint.startsWith("/")
     ? endpoint
     : `/${endpoint}`;

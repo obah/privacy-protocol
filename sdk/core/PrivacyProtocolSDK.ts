@@ -18,7 +18,7 @@ export interface DepositResult {
 }
 
 export interface RelayerTransportConfig {
-  url: string;
+  url?: string;
   endpoint?: string;
   headers?: Record<string, string>;
   relayerPublicInputIndex?: number;
@@ -51,6 +51,15 @@ interface RelayStatusResponseWire {
   request_id: string;
   status: "queued" | "submitted";
   tx_hash?: string | null;
+}
+
+interface ResolvedRelayerTransportConfig extends RelayerTransportConfig {
+  url: string;
+  endpoint: string;
+  relayerPublicInputIndex: number;
+  relayerAddress: string;
+  feePublicInputIndex: number;
+  relayerFeeWei: string | number | bigint;
 }
 
 export interface ExecutionResult {
@@ -91,6 +100,24 @@ export interface PrivateTransactionDetails {
 }
 
 export const DEFAULT_PRIVACY_PROTOCOL_CIRCUIT = bundledCircuit;
+export const DEFAULT_RELAYER_TRANSPORT_CONFIG: Required<
+  Pick<
+    RelayerTransportConfig,
+    | "url"
+    | "endpoint"
+    | "relayerPublicInputIndex"
+    | "relayerAddress"
+    | "feePublicInputIndex"
+    | "relayerFeeWei"
+  >
+> = {
+  url: "https://privacy-protocol-relayer.onrender.com",
+  endpoint: "/relay",
+  relayerPublicInputIndex: 6,
+  relayerAddress: "0xead3818b12897994e10Cba6d311804A8800926B9",
+  feePublicInputIndex: 7,
+  relayerFeeWei: "1000000000000000",
+};
 const ZERO_BYTES32 = "0x" + "00".repeat(32);
 
 interface RelayerFetchResponse {
@@ -313,7 +340,7 @@ export class PrivacyProtocolSDK {
     txHash: string,
   ): Promise<PrivateTransactionDetails> {
     const configuredRelayerAddress =
-      this.options.relayer?.relayerAddress ?? "relayer";
+      this.resolveRelayerConfig().relayerAddress ?? "relayer";
 
     if (txHash.startsWith("relay:")) {
       const requestId = txHash.slice("relay:".length);
@@ -484,7 +511,7 @@ export class PrivacyProtocolSDK {
     options: ExecutionCallOptions = {},
   ): string[] {
     const words = [...publicInputs];
-    const relayerConfig = this.options.relayer;
+    const relayerConfig = this.resolveRelayerConfig();
 
     const relayerIndex =
       options.relayerPublicInputIndex ??
@@ -535,12 +562,7 @@ export class PrivacyProtocolSDK {
   }
 
   private resolveRelayerEndpoint(): string {
-    const relayerConfig = this.options.relayer;
-    if (!relayerConfig?.url) {
-      throw new Error(
-        "Relayer URL is not configured. Set options.relayer.url when creating the SDK instance.",
-      );
-    }
+    const relayerConfig = this.resolveRelayerConfig();
 
     const endpoint = relayerConfig.endpoint ?? "/relay";
     if (endpoint.startsWith("http://") || endpoint.startsWith("https://")) {
@@ -552,6 +574,28 @@ export class PrivacyProtocolSDK {
       : relayerConfig.url;
     const suffix = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
     return `${base}${suffix}`;
+  }
+
+  private resolveRelayerConfig(): ResolvedRelayerTransportConfig {
+    const configured = this.options.relayer ?? {};
+    return {
+      url: configured.url ?? DEFAULT_RELAYER_TRANSPORT_CONFIG.url,
+      endpoint: configured.endpoint ?? DEFAULT_RELAYER_TRANSPORT_CONFIG.endpoint,
+      relayerPublicInputIndex:
+        configured.relayerPublicInputIndex ??
+        DEFAULT_RELAYER_TRANSPORT_CONFIG.relayerPublicInputIndex,
+      relayerAddress:
+        configured.relayerAddress ??
+        DEFAULT_RELAYER_TRANSPORT_CONFIG.relayerAddress,
+      feePublicInputIndex:
+        configured.feePublicInputIndex ??
+        DEFAULT_RELAYER_TRANSPORT_CONFIG.feePublicInputIndex,
+      relayerFeeWei:
+        configured.relayerFeeWei ??
+        DEFAULT_RELAYER_TRANSPORT_CONFIG.relayerFeeWei,
+      headers: configured.headers,
+      metadata: configured.metadata,
+    };
   }
 
   private getRelayerFetch(): RelayerFetch {
@@ -574,7 +618,7 @@ export class PrivacyProtocolSDK {
     operationMetadata: Record<string, unknown>,
   ): Promise<RelayQueuedResponseWire> {
     const fetchFn = this.getRelayerFetch();
-    const relayerConfig = this.options.relayer;
+    const relayerConfig = this.resolveRelayerConfig();
     const endpoint = this.resolveRelayerEndpoint();
     if (!Array.isArray(publicInputs)) {
       throw new Error("Proof generation did not return an array of publicInputs");

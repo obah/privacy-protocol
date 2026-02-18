@@ -1,13 +1,15 @@
 import {
   DEFAULT_PRIVACY_PROTOCOL_CIRCUIT,
+  DEFAULT_RELAYER_TRANSPORT_CONFIG,
   PrivacyProtocolSDK,
   core_default,
   merkleTree,
   utils_exports
-} from "../chunk-FKOVOH6P.mjs";
+} from "../chunk-LCRHVLMO.mjs";
 import "../chunk-D57E6H3M.mjs";
 export {
   DEFAULT_PRIVACY_PROTOCOL_CIRCUIT,
+  DEFAULT_RELAYER_TRANSPORT_CONFIG,
   PrivacyProtocolSDK,
   core_default as default,
   merkleTree,

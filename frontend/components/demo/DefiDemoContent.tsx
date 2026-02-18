@@ -13,12 +13,7 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
 } from "wagmi";
-import {
-  DEMO_CONTRACTS,
-  DEMO_DEFI_ABI,
-  DEMO_RELAYER,
-  ERC20_ABI,
-} from "@/lib/demo-config";
+import { DEMO_CONTRACTS, DEMO_DEFI_ABI, ERC20_ABI } from "@/lib/demo-config";
 import { formatEther, parseEther } from "viem";
 import { toast } from "sonner";
 import type {
@@ -68,13 +63,11 @@ export default function DefiDemoContent({
     poolAddress: DEMO_CONTRACTS.PrivacyProtocolPool,
     provider,
     signer,
-    relayer: DEMO_RELAYER,
   });
   const { executeAction } = useExecuteAction({
     poolAddress: DEMO_CONTRACTS.PrivacyProtocolPool,
     provider,
     signer,
-    relayer: DEMO_RELAYER,
   });
 
   const { data: ppUSDBalance } = useReadContract({
@@ -421,14 +414,6 @@ export default function DefiDemoContent({
         toast.error("Privacy SDK is not ready. Please reconnect wallet.");
         return;
       }
-      if (
-        !DEMO_RELAYER.relayerAddress ||
-        DEMO_RELAYER.relayerAddress ===
-          "0x0000000000000000000000000000000000000000"
-      ) {
-        toast.error("Relayer address is not configured for private mode.");
-        return;
-      }
 
       setIsPrivatePending(true);
       try {
@@ -596,13 +581,13 @@ export default function DefiDemoContent({
             </div>
           </div>
 
-          <div className="relative z-10 -my-2 flex items-center justify-center">
+          <div className="relative z-10 flex items-center justify-center">
             <div className="rounded-xl border border-emerald-500/45 bg-emerald-500/5 p-2 text-emerald-800/85 dark:border-emerald-500/35 dark:bg-[#06120d] dark:text-emerald-100/80">
               <ArrowDown size={16} />
             </div>
           </div>
 
-          <div className="space-y-2 rounded-xl border border-emerald-500/35 bg-emerald-500/5 p-4 dark:border-emerald-500/30 dark:bg-[#06120d]">
+          <div className="space-y-2 border border-emerald-500/35 bg-emerald-500/5 p-4 dark:border-emerald-500/30 dark:bg-[#06120d]">
             <div className="flex justify-between text-sm text-emerald-800/85 dark:text-emerald-100/70">
               <Label>Receive</Label>
               <span>Balance: {formattedBalanceOut}</span>

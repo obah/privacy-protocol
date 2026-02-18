@@ -7,7 +7,7 @@ interface DepositResult {
     txHash: string;
 }
 interface RelayerTransportConfig {
-    url: string;
+    url?: string;
     endpoint?: string;
     headers?: Record<string, string>;
     relayerPublicInputIndex?: number;
@@ -130,6 +130,7 @@ declare const DEFAULT_PRIVACY_PROTOCOL_CIRCUIT: {
     names: string[];
     brillig_names: never[];
 };
+declare const DEFAULT_RELAYER_TRANSPORT_CONFIG: Required<Pick<RelayerTransportConfig, "url" | "endpoint" | "relayerPublicInputIndex" | "relayerAddress" | "feePublicInputIndex" | "relayerFeeWei">>;
 declare class PrivacyProtocolSDK {
     provider: Provider;
     contractAddress: string;
@@ -148,6 +149,7 @@ declare class PrivacyProtocolSDK {
     private upsertPublicInputWord;
     private applyRelayerPublicInputs;
     private resolveRelayerEndpoint;
+    private resolveRelayerConfig;
     private getRelayerFetch;
     private submitToRelayer;
     _generateProof(secret: string, nullifier: string, amountInPool: string | number | bigint, amountToWithdraw: string | number | bigint, externalAddress: string, dataHash: string, leaves: string[]): Promise<{
@@ -161,4 +163,4 @@ declare class PrivacyProtocolSDK {
     getLeaves(fromBlock?: number): Promise<string[]>;
 }
 
-export { type ActionRequest as A, DEFAULT_PRIVACY_PROTOCOL_CIRCUIT as D, type ExecutionCallOptions as E, PrivacyProtocolSDK as P, type RelayerTransportConfig as R, type DepositResult as a, type ExecutionResult as b, type PrivacyProtocolSDKOptions as c, type PrivateTransactionDetails as d };
+export { type ActionRequest as A, DEFAULT_PRIVACY_PROTOCOL_CIRCUIT as D, type ExecutionCallOptions as E, PrivacyProtocolSDK as P, type RelayerTransportConfig as R, DEFAULT_RELAYER_TRANSPORT_CONFIG as a, type DepositResult as b, type ExecutionResult as c, type PrivacyProtocolSDKOptions as d, type PrivateTransactionDetails as e };

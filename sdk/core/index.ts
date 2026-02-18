@@ -2,12 +2,14 @@ import "./polyfills";
 import { merkleTree } from "./merkleTree";
 import {
   DEFAULT_PRIVACY_PROTOCOL_CIRCUIT,
+  DEFAULT_RELAYER_TRANSPORT_CONFIG,
   PrivacyProtocolSDK,
 } from "./PrivacyProtocolSDK";
 import * as utils from "./utils";
 
 export {
   DEFAULT_PRIVACY_PROTOCOL_CIRCUIT,
+  DEFAULT_RELAYER_TRANSPORT_CONFIG,
   PrivacyProtocolSDK,
   merkleTree,
   utils,

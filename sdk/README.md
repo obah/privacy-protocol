@@ -30,18 +30,20 @@ import { PrivacyProtocolSDK } from "privacy-protocol/core";
 const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
 const signer = await provider.getSigner();
 
-const sdk = new PrivacyProtocolSDK(
+const sdk = new PrivacyProtocolSDK(provider, process.env.PRIVACY_PROTOCOL_POOL_ADDRESS!);
+```
+
+Relayer transport is built in by default. You only pass `options.relayer` if you want to override the default endpoint or relayer metadata.
+
+```ts
+const sdkWithCustomRelayer = new PrivacyProtocolSDK(
   provider,
   process.env.PRIVACY_PROTOCOL_POOL_ADDRESS!,
   undefined,
   {
     relayer: {
-      url: process.env.PRIVACY_PROTOCOL_RELAYER_URL!,
-      endpoint: "/relay",
-      relayerPublicInputIndex: 6,
-      relayerAddress: process.env.PRIVACY_PROTOCOL_RELAYER_ADDRESS!,
-      feePublicInputIndex: 7,
-      relayerFeeWei: "1000000000000000",
+      url: process.env.PRIVACY_PROTOCOL_RELAYER_URL,
+      relayerAddress: process.env.PRIVACY_PROTOCOL_RELAYER_ADDRESS,
     },
   },
 );
@@ -95,13 +97,6 @@ const common = {
   poolAddress,
   provider,
   signer,
-  relayer: {
-    url: relayerUrl,
-    relayerPublicInputIndex: 6,
-    relayerAddress,
-    feePublicInputIndex: 7,
-    relayerFeeWei: "1000000000000000",
-  },
 };
 
 const { deposit } = useDeposit(common);
@@ -109,12 +104,13 @@ const { executeAction } = useExecuteAction(common);
 const { withdraw } = useWithdraw(common);
 ```
 
+You can still pass `relayer` in hook options to override defaults per app.
+
 ## Required Inputs
 
 - Deployed `PrivacyProtocolPool` address
 - Ethers provider + signer
 - Supported token address in pool
-- Relayer URL + relayer address
 - Storage for note material and tx metadata
 
 ## Common Errors

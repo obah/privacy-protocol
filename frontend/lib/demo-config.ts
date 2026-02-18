@@ -1,5 +1,4 @@
 import { Address } from "viem";
-import type { RelayerTransportConfig } from "privacy-protocol/core";
 
 export const DEMO_CONTRACTS = {
   PrivacyProtocolPool:
@@ -9,32 +8,6 @@ export const DEMO_CONTRACTS = {
   ppUSD: "0xba2A1482708e56b21f8EC7842650381855645c9A" as Address,
   USDTpp: "0x9eB5C2080E98c44b15cfd5a822414380458A7634" as Address,
   DemoDao: "0x0B25AbD0136f6Ed5C220604Ec27026522515194f" as Address,
-};
-
-function readEnvNumber(value: string | undefined, fallback: number): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-export const DEMO_RELAYER: RelayerTransportConfig = {
-  url:
-    process.env.NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_URL ??
-    "https://privacy-protocol-relayer.onrender.com",
-  endpoint: process.env.NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_ENDPOINT ?? "/relay",
-  relayerPublicInputIndex: readEnvNumber(
-    process.env.NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_PUBLIC_INPUT_INDEX,
-    6,
-  ),
-  relayerAddress:
-    process.env.NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_ADDRESS ??
-    "0xead3818b12897994e10Cba6d311804A8800926B9",
-  feePublicInputIndex: readEnvNumber(
-    process.env.NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_FEE_INPUT_INDEX,
-    7,
-  ),
-  relayerFeeWei:
-    process.env.NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_FEE_WEI ??
-    "1000000000000000",
 };
 
 export const DEMO_DEFI_ABI = [

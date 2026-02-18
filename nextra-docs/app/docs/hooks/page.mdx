@@ -1,0 +1,62 @@
+# React Hooks
+
+Import from:
+
+```ts
+import {
+  useDeposit,
+  useExecuteAction,
+  useWithdraw,
+  usePrivateTransactionDetails,
+} from "privacy-protocol/hooks";
+```
+
+Base config:
+
+```ts
+const config = { poolAddress, provider, signer };
+```
+
+Relayer config is optional. Hooks use SDK defaults unless you pass `relayer`.
+
+## `useDeposit`
+
+```ts
+const { deposit, note, isPending, error } = useDeposit(config);
+const depositResult = await deposit({ token, amount });
+```
+
+## `useExecuteAction`
+
+```ts
+const { executeAction, nextNote, isPending, error } = useExecuteAction(config);
+
+const result = await executeAction({
+  token,
+  amount,
+  target,
+  data,
+  secret: depositResult.secret,
+  nullifier: depositResult.nullifier,
+  amountInPool: amount,
+});
+```
+
+## `useWithdraw`
+
+```ts
+const { withdraw, nextNote, isPending, error } = useWithdraw(config);
+await withdraw({ token, recipient, amount, note });
+```
+
+## `usePrivateTransactionDetails`
+
+```ts
+const [privateTxHash, setPrivateTxHash] = useState<string>();
+const { data, isLoading } = usePrivateTransactionDetails({
+  ...config,
+  txHash: privateTxHash,
+});
+```
+
+Use this to display queued, submitted, and confirmed transaction states.

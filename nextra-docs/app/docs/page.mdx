@@ -1,175 +1,59 @@
 import { Callout, Steps, Tabs } from "nextra/components";
 
-# Privacy Protocol Documentation
+# Privacy Protocol Docs
 
-Privacy Protocol is a relayer-first privacy middleware for EVM dApps.
+Privacy Protocol is a relayer-first privacy middleware for EVM applications.
 
 ## Install
 
 <Tabs items={["npm", "yarn", "pnpm"]}>
-  <Tabs.Tab>```npm install privacy-protocol ethers ```</Tabs.Tab>
-  <Tabs.Tab>```yarn add privacy-protocol ethers ```</Tabs.Tab>
-  <Tabs.Tab>```pnpm add privacy-protocol ethers ```</Tabs.Tab>
+  <Tabs.Tab>
+    ```bash
+    npm install privacy-protocol ethers
+    ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+    ```bash
+    yarn add privacy-protocol ethers
+    ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+    ```bash
+    pnpm add privacy-protocol ethers
+    ```
+  </Tabs.Tab>
 </Tabs>
 
 <Callout type="info" emoji="⚡">
-  Circuit artifacts are bundled in the SDK. No manual circuit import is
-  required.
+  No manual circuit import is required. The SDK ships with bundled proving artifacts.
 </Callout>
 
-## Integration Paths
+## What Is Included
 
-- `privacy-protocol/core`
-- `privacy-protocol/hooks`
+- `privacy-protocol/core`: low-level SDK APIs.
+- `privacy-protocol/hooks`: React hooks for private app integrations.
+- Built-in relayer defaults so relayer config is optional.
 
-## Relay Lifecycle
-
-Private actions move through:
-
-1. `queued` (`relay:<request_id>`)
-2. `submitted` (on-chain tx hash available)
-3. `confirmed` (receipt success or revert)
-
-## Developer Flow
+## Quick Flow
 
 <Steps>
-### Configure SDK
-Set pool + relayer values in app environment and instantiate the SDK.
+### Initialize
+Instantiate with provider + pool address only.
 
-### Execute Private Actions
+### Deposit
+Create a private note (`secret`, `nullifier`, `commitment`) with `deposit`.
 
-Use core methods or hooks for deposit, executeAction, and withdraw.
+### Execute or Withdraw
+Spend notes privately with `executeAction` or `withdraw`.
 
-### Render Lifecycle
-
-Show queued/submitted/confirmed states in transaction UI.
-
+### Track Lifecycle
+Render relay progress from `queued` to `submitted` to `confirmed`.
 </Steps>
 
-## React Hooks
+## Next
 
-Required imports:
-
-```ts
-import {
-  useDeposit,
-  useExecuteAction,
-  useWithdraw,
-  usePrivateTransactionDetails,
-} from "privacy-protocol/hooks";
-```
-
-### useDeposit
-
-Creates a private note by depositing into the pool.
-
-```ts
-const { deposit, note, isPending, error } = useDeposit({
-  poolAddress,
-  provider,
-  signer,
-  relayer,
-});
-
-// Usage
-await deposit({
-  token: tokenAddress,
-  amount: amountWei,
-});
-```
-
-**Returns:**
-
-- `deposit(args)`: executes pool deposit
-- `note`: generated note object (`secret`, `nullifier`, `commitment`)
-- `isPending`: request state
-- `error`: last error
-
-### useExecuteAction
-
-Performs private arbitrary calls through the pool and relayer.
-
-```ts
-const { executeAction, nextNote, isPending, error } = useExecuteAction({
-  poolAddress,
-  provider,
-  signer,
-  relayer,
-});
-
-// Usage
-await executeAction({
-  token: tokenAddress,
-  amount: amountWei,
-  target: targetContract,
-  data: calldata,
-  note: existingNote, // optional if secret+nullifier passed
-});
-```
-
-**Returns:**
-
-- `executeAction(args)`: executes the action
-- `nextNote`: new note with remaining balance
-- `isPending`: request state
-- `error`: last error
-
-### useWithdraw
-
-Spends a private note and withdraws to a recipient address.
-
-```ts
-const { withdraw, nextNote, isPending, error } = useWithdraw({
-  poolAddress,
-  provider,
-  signer,
-  relayer,
-});
-
-// Usage
-await withdraw({
-  token: tokenAddress,
-  recipient: recipientAddress,
-  amount: amountWei,
-  note: existingNote,
-});
-```
-
-**Returns:**
-
-- `withdraw(args)`: executes the withdrawal
-- `nextNote`: new note with remaining balance (if any)
-- `isPending`: request state
-- `error`: last error
-
-### usePrivateTransactionDetails
-
-Resolves relay lifecycle and on-chain metadata.
-
-```ts
-const { data, isLoading, error } = usePrivateTransactionDetails({
-  poolAddress,
-  provider,
-  relayer,
-  txHash, // "relay:<id>" or "0x..."
-  enabled: true, // optional
-});
-```
-
-**Returns:**
-
-- `data`: object containing `status` (pending/success/reverted), `txHash`, `initiator`, `gasPayer`, `to`, `method`, `parameters`
-- `isLoading`: loading state
-- `error`: error state
-
-Run a relayer node and start serving private transaction traffic:
-
+- [Getting Started](/docs/getting-started)
+- [Core SDK](/docs/core-sdk)
+- [React Hooks](/docs/hooks)
+- [Deployments](/docs/deployments)
 - [Run a Relayer Node](/docs/operators/run-relayer-node)
-
-## Deployments
-
-### Arbitrum Sepolia
-
-| Contract              | Address                                      |
-| --------------------- | -------------------------------------------- |
-| `PrivacyProtocolPool` | `0xA0806cf43f5E9A2C42c8291676EE814b39A6413e` |

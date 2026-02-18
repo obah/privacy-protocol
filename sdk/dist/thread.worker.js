@@ -164,8 +164,8 @@ var require_browser = __commonJS({
     function levelToValue(level, logger2) {
       return level === "silent" ? Infinity : logger2.levels.values[level];
     }
-    var baseLogFunctionSymbol = /* @__PURE__ */ Symbol("pino.logFuncs");
-    var hierarchySymbol = /* @__PURE__ */ Symbol("pino.hierarchy");
+    var baseLogFunctionSymbol = Symbol("pino.logFuncs");
+    var hierarchySymbol = Symbol("pino.hierarchy");
     var logFallbackMap = {
       error: "log",
       fatal: "error",
@@ -579,11 +579,11 @@ var require_browser = __commonJS({
 });
 
 // node_modules/comlink/dist/esm/comlink.mjs
-var proxyMarker = /* @__PURE__ */ Symbol("Comlink.proxy");
-var createEndpoint = /* @__PURE__ */ Symbol("Comlink.endpoint");
-var releaseProxy = /* @__PURE__ */ Symbol("Comlink.releaseProxy");
-var finalizer = /* @__PURE__ */ Symbol("Comlink.finalizer");
-var throwMarker = /* @__PURE__ */ Symbol("Comlink.thrown");
+var proxyMarker = Symbol("Comlink.proxy");
+var createEndpoint = Symbol("Comlink.endpoint");
+var releaseProxy = Symbol("Comlink.releaseProxy");
+var finalizer = Symbol("Comlink.finalizer");
+var throwMarker = Symbol("Comlink.thrown");
 var isObject = (val) => typeof val === "object" && val !== null || typeof val === "function";
 var proxyTransferHandler = {
   canHandle: (val) => isObject(val) && val[proxyMarker],

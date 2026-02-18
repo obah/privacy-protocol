@@ -1,4 +1,4 @@
-export { A as ActionRequest, D as DEFAULT_PRIVACY_PROTOCOL_CIRCUIT, a as DepositResult, E as ExecutionCallOptions, b as ExecutionResult, P as PrivacyProtocolSDK, c as PrivacyProtocolSDKOptions, d as PrivateTransactionDetails, R as RelayerTransportConfig, P as default } from './PrivacyProtocolSDK-Xx40pOUD.mjs';
+export { A as ActionRequest, D as DEFAULT_PRIVACY_PROTOCOL_CIRCUIT, a as DEFAULT_RELAYER_TRANSPORT_CONFIG, b as DepositResult, E as ExecutionCallOptions, c as ExecutionResult, P as PrivacyProtocolSDK, d as PrivacyProtocolSDKOptions, e as PrivateTransactionDetails, R as RelayerTransportConfig, P as default } from './PrivacyProtocolSDK-DV4ZpIqi.mjs';
 import 'ethers';
 
 interface MerkleProof {

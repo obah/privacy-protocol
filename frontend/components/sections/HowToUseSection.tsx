@@ -4,103 +4,6 @@ import { motion } from "framer-motion";
 import { Terminal, Settings, Zap } from "lucide-react";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 
-// const steps = [
-//   {
-//     icon: Terminal,
-//     title: "Install the SDK",
-//     code: `npm i privacy-protocol ethers`,
-//     description:
-//       "Add the Privacy Protocol SDK to your project with a single command.",
-//   },
-//   {
-//     icon: Key,
-//     title: "Initialize the SDK",
-//     code: `import { PrivacyProtocolSDK } from "privacy-protocol/core";
-
-// const sdk = new PrivacyProtocolSDK(provider, poolAddress, undefined, {
-//   relayer: {
-//     url: relayerUrl,
-//     endpoint: "/relay",
-//     relayerPublicInputIndex: 6,
-//     relayerAddress,
-//     feePublicInputIndex: 7,
-//     relayerFeeWei: "1000000000000000",
-//   },
-// });
-
-// const depositResult = await sdk.deposit(
-//   tokenAddress,
-//   amount,
-//   signer
-// );`,
-//     description:
-//       "Configure pool + relayer once, then deposit to mint your first private note.",
-//   },
-//   {
-//     icon: Zap,
-//     title: "Execute Privately & Track Relay Status",
-//     code: `const result = await sdk.executeAction(
-//   tokenAddress,
-//   amount,
-//   targetContract,
-//   callData,
-//   ethers.keccak256(secret),
-//   secret,
-//   nullifier,
-//   totalAmount,
-//   leaves,
-//   signer
-// );
-
-// const details = await sdk.getPrivateTransactionDetails(result.txHash);
-// // queued -> submitted -> confirmed`,
-//     description:
-//       "Private actions return relay IDs first and then resolve to on-chain transaction metadata.",
-//   },
-// ];
-
-// const steps = [
-//   {
-//     icon: Terminal,
-//     title: "Install the SDK",
-//     code: `npm i privacy-protocol ethers`,
-//     description:
-//       "Add the Privacy Protocol SDK to your project with a single command.",
-//   },
-//   {
-//     icon: Key,
-//     title: "Initialize the SDK",
-//     code: `import { PrivacyProtocolSDK } from "privacy-protocol/core";
-
-// const sdk = new PrivacyProtocolSDK(provider, poolAddress);
-
-// const depositResult = await sdk.deposit(
-//   tokenAddress,
-//   amount,
-//   signer
-// );`,
-//     description:
-//       "Configure pool + relayer once, then deposit to mint your first private note.",
-//   },
-//   {
-//     icon: Zap,
-//     title: "Execute Privately & Track Relay Status",
-//     code: `const result = await sdk.executeAction(
-//   tokenAddress, //optional
-//   amount,
-//   targetContract,
-//   callData,
-//   zkData,
-//   signer
-// );
-
-// const details = await sdk.getPrivateTransactionDetails(result.txHash);
-// // queued -> submitted -> confirmed`,
-//     description:
-//       "Private actions return relay IDs first and then resolve to on-chain transaction metadata.",
-//   },
-// ];
-
 const steps = [
   {
     icon: Terminal,
@@ -117,21 +20,34 @@ const config = {
   poolAddress,
   provider,
   signer,
-  relayer,
 };`,
-    description: "Configure the SDK with your pool and relayer details.",
+    description:
+      "Initialize with provider and pool address. Relayer transport is resolved by default.",
   },
   {
     icon: Zap,
     title: "Use Hooks",
-    code: `// 1. Initialize Hooks
+    code: `const [privateTxHash, setPrivateTxHash] = useState<string>();
 const { deposit } = useDeposit(config);
 const { executeAction } = useExecuteAction(config);
+const { data: details } = usePrivateTransactionDetails({
+  ...config,
+  txHash: privateTxHash,
+});
 
-// 2. Execute Private Transactions
-await deposit({ token, amount });
-await executeAction({ target, data, amount });`,
-    description: "Deposit funds and execute private actions with ease.",
+const depositResult = await deposit({ token, amount });
+const result = await executeAction({
+  token,
+  amount,
+  target,
+  data,
+  secret: depositResult.secret,
+  nullifier: depositResult.nullifier,
+  amountInPool: amount,
+});
+setPrivateTxHash(result.txHash);`,
+    description:
+      "Deposit funds and execute private actions. Relay lifecycle resolves from queued to submitted to confirmed.",
   },
 ];
 
@@ -175,7 +91,6 @@ export function HowToUseSection() {
               />
               <div className="bg-background relative flex h-full flex-col justify-between gap-6 overflow-hidden rounded-xl border-[0.75px] p-6 shadow-sm md:p-6 dark:shadow-[0px_0px_27px_0px_rgba(45,45,45,0.3)]">
                 <div className="flex flex-col gap-6 lg:flex-row">
-                  {/* Step info */}
                   <div className="lg:w-1/3">
                     <div className="mb-3 flex items-center gap-3">
                       <div className="bg-primary/10 flex h-10 w-10 items-center justify-center rounded-xl">
@@ -193,7 +108,6 @@ export function HowToUseSection() {
                     </p>
                   </div>
 
-                  {/* Code block */}
                   <div className="lg:w-2/3">
                     <div className="bg-foreground/5 overflow-x-auto rounded-xl p-4 dark:bg-white/5">
                       <pre className="text-foreground/80 font-mono text-sm">

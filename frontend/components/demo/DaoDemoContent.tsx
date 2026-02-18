@@ -22,7 +22,6 @@ import {
 import {
   DEMO_CONTRACTS,
   DEMO_DAO_ABI,
-  DEMO_RELAYER,
   ERC20_ABI,
 } from "@/lib/demo-config";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -128,14 +127,12 @@ function ProposalCard({
     poolAddress: DEMO_CONTRACTS.PrivacyProtocolPool,
     provider,
     signer,
-    relayer: DEMO_RELAYER,
   });
 
   const { executeAction } = useExecuteAction({
     poolAddress: DEMO_CONTRACTS.PrivacyProtocolPool,
     provider,
     signer,
-    relayer: DEMO_RELAYER,
   });
 
   const { data: proposalData, refetch: refetchProposalData } = useReadContract({
@@ -310,14 +307,6 @@ function ProposalCard({
     if (isIncognito) {
       if (!isPrivacyReady || !privacySdk) {
         toast.error("Privacy SDK is not ready. Please reconnect wallet.");
-        return;
-      }
-      if (
-        !DEMO_RELAYER.relayerAddress ||
-        DEMO_RELAYER.relayerAddress ===
-          "0x0000000000000000000000000000000000000000"
-      ) {
-        toast.error("Relayer address is not configured for private mode.");
         return;
       }
 

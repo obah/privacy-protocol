@@ -416,6 +416,14 @@ async function computeContextBoundCommitment(newNullifier, secret, amountLeft, e
 
 // core/PrivacyProtocolSDK.ts
 var DEFAULT_PRIVACY_PROTOCOL_CIRCUIT = circuits_default;
+var DEFAULT_RELAYER_TRANSPORT_CONFIG = {
+  url: "https://privacy-protocol-relayer.onrender.com",
+  endpoint: "/relay",
+  relayerPublicInputIndex: 6,
+  relayerAddress: "0xead3818b12897994e10Cba6d311804A8800926B9",
+  feePublicInputIndex: 7,
+  relayerFeeWei: "1000000000000000"
+};
 var ZERO_BYTES32 = "0x" + "00".repeat(32);
 var PRIVACY_PROTOCOL_POOL_ABI = [
   "function deposit(address token, uint256 amount, bytes32 commitment) external",
@@ -564,7 +572,7 @@ var PrivacyProtocolSDK = class {
     };
   }
   async getPrivateTransactionDetails(txHash) {
-    const configuredRelayerAddress = this.options.relayer?.relayerAddress ?? "relayer";
+    const configuredRelayerAddress = this.resolveRelayerConfig().relayerAddress ?? "relayer";
     if (txHash.startsWith("relay:")) {
       const requestId = txHash.slice("relay:".length);
       if (requestId) {
@@ -700,7 +708,7 @@ var PrivacyProtocolSDK = class {
   }
   applyRelayerPublicInputs(publicInputs, options = {}) {
     const words = [...publicInputs];
-    const relayerConfig = this.options.relayer;
+    const relayerConfig = this.resolveRelayerConfig();
     const relayerIndex = options.relayerPublicInputIndex ?? relayerConfig?.relayerPublicInputIndex ?? void 0;
     const relayerAddress = options.relayerAddress ?? relayerConfig?.relayerAddress ?? void 0;
     if (relayerIndex !== void 0) {
@@ -740,12 +748,7 @@ var PrivacyProtocolSDK = class {
     return words;
   }
   resolveRelayerEndpoint() {
-    const relayerConfig = this.options.relayer;
-    if (!relayerConfig?.url) {
-      throw new Error(
-        "Relayer URL is not configured. Set options.relayer.url when creating the SDK instance."
-      );
-    }
+    const relayerConfig = this.resolveRelayerConfig();
     const endpoint = relayerConfig.endpoint ?? "/relay";
     if (endpoint.startsWith("http://") || endpoint.startsWith("https://")) {
       return endpoint;
@@ -753,6 +756,19 @@ var PrivacyProtocolSDK = class {
     const base = relayerConfig.url.endsWith("/") ? relayerConfig.url.slice(0, -1) : relayerConfig.url;
     const suffix = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
     return `${base}${suffix}`;
+  }
+  resolveRelayerConfig() {
+    const configured = this.options.relayer ?? {};
+    return {
+      url: configured.url ?? DEFAULT_RELAYER_TRANSPORT_CONFIG.url,
+      endpoint: configured.endpoint ?? DEFAULT_RELAYER_TRANSPORT_CONFIG.endpoint,
+      relayerPublicInputIndex: configured.relayerPublicInputIndex ?? DEFAULT_RELAYER_TRANSPORT_CONFIG.relayerPublicInputIndex,
+      relayerAddress: configured.relayerAddress ?? DEFAULT_RELAYER_TRANSPORT_CONFIG.relayerAddress,
+      feePublicInputIndex: configured.feePublicInputIndex ?? DEFAULT_RELAYER_TRANSPORT_CONFIG.feePublicInputIndex,
+      relayerFeeWei: configured.relayerFeeWei ?? DEFAULT_RELAYER_TRANSPORT_CONFIG.relayerFeeWei,
+      headers: configured.headers,
+      metadata: configured.metadata
+    };
   }
   getRelayerFetch() {
     const fetchFn = globalThis.fetch;
@@ -765,7 +781,7 @@ var PrivacyProtocolSDK = class {
   }
   async submitToRelayer(proof, publicInputs, executionOptions, operationMetadata) {
     const fetchFn = this.getRelayerFetch();
-    const relayerConfig = this.options.relayer;
+    const relayerConfig = this.resolveRelayerConfig();
     const endpoint = this.resolveRelayerEndpoint();
     if (!Array.isArray(publicInputs)) {
       throw new Error("Proof generation did not return an array of publicInputs");
@@ -928,7 +944,8 @@ export {
   merkleTree,
   utils_exports,
   DEFAULT_PRIVACY_PROTOCOL_CIRCUIT,
+  DEFAULT_RELAYER_TRANSPORT_CONFIG,
   PrivacyProtocolSDK,
   core_default
 };
-//# sourceMappingURL=chunk-FKOVOH6P.mjs.map
+//# sourceMappingURL=chunk-LCRHVLMO.mjs.map

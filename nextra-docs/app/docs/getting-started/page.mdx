@@ -1,0 +1,78 @@
+# Getting Started
+
+This guide shows the default integration path where relayer details are abstracted by the SDK.
+
+## 1) Initialize SDK
+
+```ts
+import { ethers } from "ethers";
+import { PrivacyProtocolSDK } from "privacy-protocol/core";
+
+const provider = new ethers.BrowserProvider(window.ethereum);
+const signer = await provider.getSigner();
+
+const sdk = new PrivacyProtocolSDK(
+  provider,
+  process.env.NEXT_PUBLIC_PRIVACY_PROTOCOL_POOL_ADDRESS!
+);
+```
+
+You only pass `options.relayer` when you want custom relayer overrides.
+
+## 2) Deposit (Create Note)
+
+```ts
+const tokenAddress = "0x...";
+const amount = ethers.parseEther("1");
+const poolAddress = process.env.NEXT_PUBLIC_PRIVACY_PROTOCOL_POOL_ADDRESS!;
+
+const token = new ethers.Contract(
+  tokenAddress,
+  ["function approve(address spender,uint256 amount) external returns (bool)"],
+  signer
+);
+await token.approve(poolAddress, amount);
+
+const depositResult = await sdk.deposit(tokenAddress, amount, signer);
+```
+
+Persist `depositResult.secret`, `depositResult.nullifier`, and `depositResult.commitment`.
+
+## 3) Execute a Private Action
+
+```ts
+const leaves = await sdk.getLeaves();
+
+const result = await sdk.executeAction(
+  tokenAddress,
+  amount,
+  "0xTargetContract",
+  "0xEncodedCalldata",
+  ethers.keccak256(depositResult.secret),
+  depositResult.secret,
+  depositResult.nullifier,
+  amount,
+  leaves,
+  signer
+);
+```
+
+## 4) Track Relay Lifecycle
+
+```ts
+const details = await sdk.getPrivateTransactionDetails(result.txHash);
+console.log(details.status); // pending | success | reverted
+```
+
+If `result.txHash` is `relay:<request_id>`, the SDK resolves it through relayer status before mapping to on-chain metadata.
+
+## Optional Custom Relayer
+
+```ts
+const sdkWithCustomRelayer = new PrivacyProtocolSDK(provider, poolAddress, undefined, {
+  relayer: {
+    url: "https://your-relayer.example.com",
+    relayerAddress: "0xYourRelayerAddress",
+  },
+});
+```

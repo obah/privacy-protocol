@@ -2,6 +2,8 @@
 
 This manual covers production setup for a Privacy Protocol relayer operator.
 
+The SDK is relayer-first by default. Running your own relayer is optional, but lets you control routing, economics, and operational policy.
+
 ## Why Operate a Relayer
 
 - Earn relay fees for private transactions your node submits.
@@ -33,6 +35,15 @@ RELAYER_RETRY_BASE_DELAY_MS=500
 RELAYER_MEMPOOL_PATH=./data/mempool.json
 ```
 
+### Variable Notes
+
+- `RELAYER_RPC_URL`: RPC endpoint used for simulation and submission.
+- `RELAYER_PRIVATE_KEY`: relayer signer paying gas for submitted batches.
+- `FAN_POOL_ADDRESS`: deployed `PrivacyProtocolPool` address.
+- `RELAYER_PUBLIC_INPUT_RELAYER_INDEX`: index in `public_inputs` for relayer address.
+- `RELAYER_PUBLIC_INPUT_FEE_INDEX`: index in `public_inputs` for relayer fee.
+- `RELAYER_BATCH_SIZE` + `RELAYER_BATCH_MAX_WAIT_SECS`: batching policy knobs.
+
 ## Build and Run
 
 ```bash
@@ -46,6 +57,7 @@ cargo run --release
 - `POST /relay`
 - `GET /relay/{request_id}`
 - `GET /health`
+- `GET /relay/{request_id}`
 
 Health check:
 
@@ -61,6 +73,20 @@ curl http://127.0.0.1:8787/health
 4. Start Command: `RELAYER_BIND_ADDR=0.0.0.0:$PORT ./target/release/privacy-protocol-relayer`.
 5. Add the `.env` values in Render secrets.
 6. Fund the relayer signer with native gas token.
+
+## Connect Apps to Your Relayer
+
+By default, SDK consumers do not need relayer config.  
+To point apps to your operator endpoint explicitly:
+
+```ts
+const sdk = new PrivacyProtocolSDK(provider, poolAddress, undefined, {
+  relayer: {
+    url: "https://your-relayer.example.com",
+    relayerAddress: "0xYourRelayerAddress",
+  },
+});
+```
 
 ## Security Checklist
 

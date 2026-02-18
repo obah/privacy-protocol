@@ -1,0 +1,90 @@
+# Core SDK
+
+`PrivacyProtocolSDK` is the low-level API for private deposits, actions, withdrawals, and relay metadata.
+
+## Constructor
+
+```ts
+new PrivacyProtocolSDK(provider, poolAddress);
+```
+
+Optional override:
+
+```ts
+new PrivacyProtocolSDK(provider, poolAddress, undefined, {
+  relayer: {
+    url: "https://your-relayer.example.com",
+    relayerAddress: "0xYourRelayerAddress",
+  },
+});
+```
+
+## Main Methods
+
+### `deposit`
+
+```ts
+const result = await sdk.deposit(token, amount, signer);
+```
+
+Returns:
+
+```ts
+{
+  secret: string;
+  nullifier: string;
+  commitment: string;
+  txHash: string;
+}
+```
+
+### `executeAction`
+
+```ts
+const result = await sdk.executeAction(
+  token,
+  amount,
+  target,
+  data,
+  actionId,
+  secret,
+  nullifier,
+  amountInPool,
+  leaves,
+  signer
+);
+```
+
+`actionId` must be `keccak256(secret)`.
+
+### `withdraw`
+
+```ts
+const result = await sdk.withdraw(
+  token,
+  recipient,
+  amount,
+  secret,
+  nullifier,
+  amountInPool,
+  leaves,
+  signer
+);
+```
+
+### `getLeaves`
+
+```ts
+const leaves = await sdk.getLeaves();
+```
+
+### `getPrivateTransactionDetails`
+
+```ts
+const details = await sdk.getPrivateTransactionDetails(txHashOrRelayId);
+```
+
+Accepts both:
+
+- `relay:<request_id>`
+- on-chain `0x...` hash
