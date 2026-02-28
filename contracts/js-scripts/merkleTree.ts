@@ -1,19 +1,10 @@
-import { Barretenberg, Fr } from "@aztec/bb.js";
-
-let bbInstance: Barretenberg | undefined;
-
-async function getBb(): Promise<Barretenberg> {
-  if (!bbInstance) {
-    bbInstance = await Barretenberg.new();
-  }
-  return bbInstance;
-}
+import { poseidon2Hash } from "@aztec/foundation/crypto";
+import { Fr } from "@aztec/foundation/fields";
 
 async function hashLeftRight(left: string, right: string): Promise<string> {
-  const bb = await getBb();
   const frLeft = Fr.fromString(left);
   const frRight = Fr.fromString(right);
-  const hash = await bb.poseidon2Hash([frLeft, frRight]);
+  const hash = await poseidon2Hash([frLeft, frRight]);
   return hash.toString();
 }
 
@@ -115,7 +106,11 @@ export class PoseidonTree {
     this.totalLeaves++;
   }
 
-  async update(index: number, newLeaf: string, isInsert: boolean = false): Promise<void> {
+  async update(
+    index: number,
+    newLeaf: string,
+    isInsert: boolean = false,
+  ): Promise<void> {
     if (!isInsert && index >= this.totalLeaves) {
       throw Error("Use insert method for new elements.");
     } else if (isInsert && index < this.totalLeaves) {
@@ -152,7 +147,7 @@ export class PoseidonTree {
 
   traverse(
     index: number,
-    fn: (level: number, currentIndex: number, siblingIndex: number) => void
+    fn: (level: number, currentIndex: number, siblingIndex: number) => void,
   ): void {
     let currentIndex = index;
     for (let level = 0; level < this.levels; level++) {
@@ -168,8 +163,8 @@ export class PoseidonTree {
     fn: (
       level: number,
       currentIndex: number,
-      siblingIndex: number
-    ) => Promise<void>
+      siblingIndex: number,
+    ) => Promise<void>,
   ): Promise<void> {
     let currentIndex = index;
     for (let level = 0; level < this.levels; level++) {

@@ -1,6 +1,6 @@
 import {
   PrivacyProtocolSDK
-} from "../chunk-LCRHVLMO.mjs";
+} from "../chunk-HYABS6WD.mjs";
 import "../chunk-D57E6H3M.mjs";
 
 // hooks/useLocalNotes.ts

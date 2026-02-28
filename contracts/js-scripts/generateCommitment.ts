@@ -1,15 +1,14 @@
-import { Barretenberg, Fr } from "@aztec/bb.js";
+import { poseidon2Hash } from "@aztec/foundation/crypto";
+import { Fr } from "@aztec/foundation/fields";
 import { ethers } from "ethers";
 
 (async () => {
   try {
-    const bb = await Barretenberg.new();
-
     const amountInput = process.argv[2] ? process.argv[2] : "0";
     const amount = new Fr(BigInt(amountInput));
     const nullifier = Fr.random();
     const secret = Fr.random();
-    const commitment: Fr = await bb.poseidon2Hash([nullifier, secret, amount]);
+    const commitment: Fr = await poseidon2Hash([nullifier, secret, amount]);
 
     const result = ethers.AbiCoder.defaultAbiCoder().encode(
       ["bytes32", "bytes32", "bytes32", "bytes32"],

@@ -1,4 +1,6 @@
-import { Barretenberg, Fr, UltraHonkBackend } from "@aztec/bb.js";
+import { UltraHonkBackend } from "@aztec/bb.js";
+import { poseidon2Hash } from "@aztec/foundation/crypto";
+import { Fr } from "@aztec/foundation/fields";
 import { ethers } from "ethers";
 import { Noir } from "@noir-lang/noir_js";
 import path from "path";
@@ -13,8 +15,6 @@ const circuitPath = path.resolve(
 const circuit = JSON.parse(fs.readFileSync(circuitPath, "utf8"));
 
 (async () => {
-  const bb = await Barretenberg.new();
-
   const inputs = process.argv.slice(2);
 
   const nullifier = inputs[0];
@@ -27,22 +27,20 @@ const circuit = JSON.parse(fs.readFileSync(circuitPath, "utf8"));
 
   const amountLeft = BigInt(amountInPool) - BigInt(amountToWithdraw);
 
-  // Reconstruct the commitment being spent
-  const commitment = await bb.poseidon2Hash([
+  const commitment = await poseidon2Hash([
     Fr.fromString(nullifier),
     Fr.fromString(secret),
     new Fr(BigInt(amountInPool)),
   ]);
 
-  const nullifierHash = await bb.poseidon2Hash([Fr.fromString(nullifier)]);
+  const nullifierHash = await poseidon2Hash([Fr.fromString(nullifier)]);
 
-  // Generate new nullifier and new commitment
   const newNullifier = Fr.random();
-  const actionContextHash = await bb.poseidon2Hash([
+  const actionContextHash = await poseidon2Hash([
     new Fr(BigInt(recipient)),
     new Fr(BigInt(dataHash)),
   ]);
-  const newCommitment = await bb.poseidon2Hash([
+  const newCommitment = await poseidon2Hash([
     newNullifier,
     Fr.fromString(secret),
     new Fr(amountLeft),
@@ -76,9 +74,17 @@ const circuit = JSON.parse(fs.readFileSync(circuitPath, "utf8"));
     };
     const { witness } = await noir.execute(input);
 
-    const { proof, publicInputs } = await honk.generateProof(witness, {
-      keccak: true,
-    });
+    const originalLog = console.log;
+    let proof: Uint8Array;
+    let publicInputs: string[];
+    try {
+      console.log = () => {};
+      ({ proof, publicInputs } = await honk.generateProof(witness, {
+        keccakZK: true,
+      }));
+    } finally {
+      console.log = originalLog;
+    }
 
     const result = ethers.AbiCoder.defaultAbiCoder().encode(
       ["bytes", "bytes32[]", "bytes32"],
@@ -92,15 +98,3 @@ const circuit = JSON.parse(fs.readFileSync(circuitPath, "utf8"));
     process.exit(1);
   }
 })();
-
-// npx tsx js-scripts/generateProof.ts \
-//   "0x08dd7b45f81f506ee5c26ed61d6c49d1524b395ca7441c823dc6c789b1c3bd96" \
-//   "0x2b1096453832e9b026ba925a7fe0acca5ad53f7554ef9c11a6f3cff791179ac8" \
-//   "0x0000000000000000000000000000000000000000000000000000000000000064" \
-//   "0x0000000000000000000000000000000000000000000000000000000000000028" \
-//   "0x07fe0d0f5990d25c0917f068aaad7c70bef144ef196d56f6b3012991d45d5d56" \
-//   "0x0a474b5dd5d8ebb47d1815b4b73468386170f1f036c72f2999fa0f2058bc9371" \
-//   "0x043c8ccd1e48408107110d7f588ddcd79f930f010a3559efe4ec9563349dfbd2" \
-//   "0x0c0149ac1114d0f63ba3f437ce15ffbd380eef8896e9af596815cd4b6f933719" \
-//   "0x1fb3d57cb168bd94838366debec418a05e295d8056e5a413d9d866c145b65c31" \
-//   "0x0bbe338f5803236793d59a8b3104137391ef14e3aee23dbe7221e58d03117dc6"

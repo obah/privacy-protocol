@@ -85,23 +85,23 @@ declare const DEFAULT_PRIVACY_PROTOCOL_CIRCUIT: {
         })[];
         return_type: null;
         error_types: {
-            "1919566133504053500": {
+            "1493345259169062951": {
                 error_kind: string;
                 string: string;
             };
-            "6485997221020871071": {
+            "6298344636856496564": {
                 error_kind: string;
                 string: string;
             };
-            "11311738024492343678": {
+            "10903322481741506051": {
                 error_kind: string;
                 string: string;
             };
-            "13235270398509308954": {
+            "12469291177396340830": {
                 error_kind: string;
                 string: string;
             };
-            "13410961693771009187": {
+            "15183641815212410238": {
                 error_kind: string;
                 string: string;
             };
@@ -114,7 +114,7 @@ declare const DEFAULT_PRIVACY_PROTOCOL_CIRCUIT: {
             source: string;
             path: string;
         };
-        "50": {
+        "19": {
             source: string;
             path: string;
         };
@@ -122,13 +122,20 @@ declare const DEFAULT_PRIVACY_PROTOCOL_CIRCUIT: {
             source: string;
             path: string;
         };
-        "59": {
+        "52": {
+            source: string;
+            path: string;
+        };
+        "60": {
             source: string;
             path: string;
         };
     };
-    names: string[];
-    brillig_names: never[];
+    expression_width: {
+        Bounded: {
+            width: number;
+        };
+    };
 };
 declare const DEFAULT_RELAYER_TRANSPORT_CONFIG: Required<Pick<RelayerTransportConfig, "url" | "endpoint" | "relayerPublicInputIndex" | "relayerAddress" | "feePublicInputIndex" | "relayerFeeWei">>;
 declare class PrivacyProtocolSDK {
