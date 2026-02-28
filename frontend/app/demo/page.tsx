@@ -251,12 +251,12 @@ function NormalTransactionCard({ log }: { log: NormalTransactionLog }) {
   const noiseSeed = transaction?.input ?? log.hash;
 
   return (
-    <article className="rounded-2xl border border-emerald-500/35 bg-transparent p-4 shadow-[0_0_0_1px_rgba(16,185,129,0.08),0_10px_24px_-20px_rgba(16,185,129,0.35)] dark:border-emerald-400/30 dark:bg-[#050c08] dark:shadow-[0_0_0_1px_rgba(16,185,129,0.1),0_20px_40px_-28px_rgba(16,185,129,0.9)]">
+    <article className="border-primary/40 hover:border-primary/60 rounded-2xl border bg-black/40 p-4 shadow-[0_0_15px_rgba(34,197,94,0.1)] backdrop-blur-md transition-all hover:bg-black/60 hover:shadow-[0_0_20px_rgba(34,197,94,0.2)]">
       <div className="mb-3 flex items-center justify-between gap-3 text-xs">
-        <span className="rounded-full border border-emerald-500/45 bg-emerald-500/10 px-2.5 py-1 text-[10px] tracking-[0.16em] text-emerald-800 uppercase dark:border-emerald-400/35 dark:text-emerald-200">
+        <span className="border-primary/40 bg-primary/10 text-primary rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-[0.16em] uppercase shadow-[0_0_10px_rgba(34,197,94,0.2)]">
           {log.source.toUpperCase()} / {status.toUpperCase()}
         </span>
-        <span className="text-emerald-800/70 dark:text-emerald-200/65">
+        <span className="text-primary/70 font-mono">
           {new Date(log.createdAt).toLocaleTimeString()}
         </span>
       </div>
@@ -277,7 +277,7 @@ function NormalTransactionCard({ log }: { log: NormalTransactionLog }) {
         href={`${ARBITRUM_SEPOLIA_EXPLORER}/tx/${log.hash}`}
         target="_blank"
         rel="noreferrer"
-        className="mt-3 inline-flex items-center gap-1 text-xs text-emerald-800/90 underline-offset-4 hover:text-emerald-900 hover:underline dark:text-emerald-200/80 dark:hover:text-emerald-100"
+        className="text-primary/80 hover:text-primary mt-3 inline-flex items-center gap-1 text-xs font-bold underline-offset-4 transition-all hover:underline hover:drop-shadow-[0_0_8px_rgba(34,197,94,0.8)]"
       >
         View on Arbitrum Sepolia Etherscan
         <ExternalLink size={12} />
@@ -327,12 +327,12 @@ function PrivateTransactionCard({ log }: { log: PrivateTransactionLog }) {
   const isRelayReverted = receipt?.status === "reverted";
 
   return (
-    <article className="rounded-2xl border border-sky-500/35 bg-transparent p-4 shadow-[0_0_0_1px_rgba(56,189,248,0.1),0_10px_24px_-20px_rgba(56,189,248,0.4)] dark:border-sky-400/30 dark:bg-[#070910] dark:shadow-[0_0_0_1px_rgba(56,189,248,0.12),0_20px_40px_-28px_rgba(56,189,248,0.9)]">
+    <article className="rounded-2xl border border-cyan-500/40 bg-black/40 p-4 shadow-[0_0_15px_rgba(6,182,212,0.1)] backdrop-blur-md transition-all hover:border-cyan-500/60 hover:bg-black/60 hover:shadow-[0_0_20px_rgba(6,182,212,0.2)]">
       <div className="mb-3 flex items-center justify-between gap-3 text-xs">
-        <span className="rounded-full border border-sky-500/45 bg-sky-500/10 px-2.5 py-1 text-[10px] tracking-[0.16em] text-sky-800 uppercase dark:border-sky-400/35 dark:text-sky-200">
+        <span className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-bold tracking-[0.16em] text-cyan-400 uppercase shadow-[0_0_10px_rgba(6,182,212,0.2)]">
           {log.source.toUpperCase()} / {status.toUpperCase()}
         </span>
-        <span className="text-sky-800/70 dark:text-sky-200/70">
+        <span className="font-mono text-cyan-400/70">
           {new Date(log.createdAt).toLocaleTimeString()}
         </span>
       </div>
@@ -369,8 +369,8 @@ function PrivateTransactionCard({ log }: { log: PrivateTransactionLog }) {
       </div>
 
       {relayRequestId ? (
-        <div className="mt-3 rounded-xl border border-sky-500/30 bg-sky-500/5 p-3">
-          <p className="text-[11px] tracking-[0.16em] text-sky-800/80 uppercase dark:text-sky-200/80">
+        <div className="mt-3 rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-3">
+          <p className="neon-text text-[11px] font-bold tracking-[0.16em] text-cyan-500 uppercase">
             Relay Receipt Lifecycle
           </p>
           <div className="mt-2 grid gap-2 sm:grid-cols-3">
@@ -418,13 +418,13 @@ function PrivateTransactionCard({ log }: { log: PrivateTransactionLog }) {
           href={`${ARBITRUM_SEPOLIA_EXPLORER}/tx/${onchainHash}`}
           target="_blank"
           rel="noreferrer"
-          className="mt-3 inline-flex items-center gap-1 text-xs text-sky-800/90 underline-offset-4 hover:text-sky-900 hover:underline dark:text-sky-200/80 dark:hover:text-sky-100"
+          className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-cyan-400/80 underline-offset-4 transition-all hover:text-cyan-400 hover:underline hover:drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]"
         >
           View on Arbitrum Sepolia Etherscan
           <ExternalLink size={12} />
         </Link>
       ) : (
-        <p className="mt-3 text-xs text-sky-800/85 dark:text-sky-100/75">
+        <p className="mt-3 font-mono text-xs text-cyan-400/70">
           Relayed request queued. On-chain hash will appear after batch submit.
         </p>
       )}
@@ -606,8 +606,8 @@ export default function DemoPage() {
                 className={cn(
                   "flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition-all",
                   activeTab === "dao"
-                    ? "border-emerald-500/45 bg-emerald-500/10 text-emerald-800 shadow-[0_0_0_1px_rgba(16,185,129,0.14),0_8px_20px_-16px_rgba(16,185,129,0.45)] dark:border-emerald-300/60 dark:bg-[radial-gradient(circle_at_top,#1a3f2c_0%,#0b1711_100%)] dark:text-emerald-100 dark:shadow-[0_0_0_1px_rgba(16,185,129,0.18),0_10px_20px_-16px_rgba(16,185,129,0.95)]"
-                    : "border-emerald-500/35 bg-transparent text-emerald-700/85 hover:border-emerald-500/55 hover:text-emerald-900 dark:border-emerald-500/25 dark:bg-[#050b08] dark:text-emerald-200/70 dark:hover:border-emerald-300/40 dark:hover:text-emerald-100",
+                    ? "border-primary/40 bg-primary/10 text-primary shadow-[0_0_15px_rgba(34,197,94,0.15)]"
+                    : "border-primary/30 bg-black/40 text-primary/70 hover:border-primary/50 hover:text-primary",
                 )}
               >
                 <Vote size={18} />
@@ -618,8 +618,8 @@ export default function DemoPage() {
                 className={cn(
                   "flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition-all",
                   activeTab === "defi"
-                    ? "border-emerald-500/45 bg-emerald-500/10 text-emerald-800 shadow-[0_0_0_1px_rgba(16,185,129,0.14),0_8px_20px_-16px_rgba(16,185,129,0.45)] dark:border-emerald-300/60 dark:bg-[radial-gradient(circle_at_top,#1a3f2c_0%,#0b1711_100%)] dark:text-emerald-100 dark:shadow-[0_0_0_1px_rgba(16,185,129,0.18),0_10px_20px_-16px_rgba(16,185,129,0.95)]"
-                    : "border-emerald-500/35 bg-transparent text-emerald-700/85 hover:border-emerald-500/55 hover:text-emerald-900 dark:border-emerald-500/25 dark:bg-[#050b08] dark:text-emerald-200/70 dark:hover:border-emerald-300/40 dark:hover:text-emerald-100",
+                    ? "border-primary/40 bg-primary/10 text-primary shadow-[0_0_15px_rgba(34,197,94,0.15)]"
+                    : "border-primary/30 bg-black/40 text-primary/70 hover:border-primary/50 hover:text-primary",
                 )}
               >
                 <LayoutDashboard size={18} />
@@ -654,14 +654,14 @@ export default function DemoPage() {
           <div className="min-h-[500px]">{currentTab.component}</div>
         </div>
 
-        <div className="hidden self-stretch border border-emerald-500/35 lg:block dark:border-emerald-500/30"></div>
+        <div className="border-primary/20 hidden self-stretch border-l shadow-[0_0_15px_rgba(34,197,94,0.1)] drop-shadow-[0_0_8px_rgba(34,197,94,0.3)] lg:block"></div>
 
         <div className="w-full lg:w-1/2">
           <div className="mb-10 pt-6">
-            <h1 className="mb-2 text-3xl font-bold tracking-tight">
+            <h1 className="neon-text text-primary mb-2 text-3xl font-bold tracking-widest uppercase">
               Transaction Logs
             </h1>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-primary/70 font-mono text-sm tracking-wide">
               Perform transactions in both public and incogito (private) modes
               to see the difference in metadata.
             </p>
@@ -669,22 +669,25 @@ export default function DemoPage() {
               href={ARBITRUM_SEPOLIA_EXPLORER}
               target="_blank"
               rel="noreferrer"
-              className="text-primary mt-1 inline-flex items-center gap-1 text-xs underline underline-offset-4"
+              className="text-primary mt-1 inline-flex items-center gap-1 text-xs font-bold underline underline-offset-4 transition-all hover:drop-shadow-[0_0_8px_rgba(34,197,94,0.8)]"
             >
               Open Arbitrum Sepolia Etherscan
               <ExternalLink size={12} />
             </Link>
 
-            <div className="mt-6 space-y-4 rounded-2xl border border-emerald-500/35 bg-transparent p-4 text-emerald-900 shadow-[0_0_0_1px_rgba(16,185,129,0.08),0_12px_28px_-22px_rgba(16,185,129,0.45)] dark:border-emerald-500/30 dark:bg-[radial-gradient(circle_at_top,#123223_0%,#070d0a_46%,#040806_100%)] dark:text-emerald-100 dark:shadow-none">
+            <div className="border-primary/20 text-primary mt-6 space-y-4 rounded-2xl border bg-black/40 p-4 shadow-[0_0_15px_rgba(34,197,94,0.05)] backdrop-blur-md">
               <div className="mb-2 flex items-center gap-2 text-sm">
-                <TerminalSquare size={14} />
-                <p className="font-mono tracking-[0.18em] uppercase">
+                <TerminalSquare
+                  size={14}
+                  className="text-primary drop-shadow-[0_0_5px_rgba(34,197,94,0.8)]"
+                />
+                <p className="text-primary font-mono font-bold tracking-[0.18em] uppercase">
                   Normal Transactions
                 </p>
               </div>
 
               {normalLogs.length === 0 ? (
-                <div className="rounded-xl border border-emerald-500/35 bg-emerald-500/5 p-4 font-mono text-xs text-emerald-800/80 dark:border-emerald-500/20 dark:text-emerald-200/70">
+                <div className="border-primary/30 bg-primary/5 text-primary/70 rounded-xl border p-4 font-mono text-xs">
                   Perform a vote or swap to see its logs here.
                 </div>
               ) : (
@@ -695,22 +698,25 @@ export default function DemoPage() {
                 </div>
               )}
 
-              <div className="my-4 border-t border-dashed border-emerald-500/35 dark:border-emerald-400/20"></div>
+              <div className="border-primary/30 my-4 border-t border-dashed"></div>
 
               <div className="mb-2 flex items-center gap-2 text-sm">
-                <Lock size={14} />
-                <p className="font-mono tracking-[0.18em] uppercase">
+                <Lock
+                  size={14}
+                  className="text-cyan-400 drop-shadow-[0_0_5px_rgba(6,182,212,0.8)]"
+                />
+                <p className="font-mono font-bold tracking-[0.18em] text-cyan-400 uppercase">
                   Private Transactions
                 </p>
               </div>
-              <p className="mb-2 text-xs text-sky-800/80 dark:text-sky-200/70">
+              <p className="mb-2 font-mono text-xs text-cyan-400/80">
                 Perform a vote or swap in incognito mode to see its logs here.
                 Private actions are submitted to the relayer and later batched
                 on-chain. The relayer pays gas, and target contracts see the
                 privacy proxy as caller.
               </p>
               {privateLogs.length === 0 ? (
-                <div className="rounded-xl border border-sky-500/35 bg-sky-500/5 p-4 font-mono text-xs text-sky-800/85 dark:border-sky-500/30 dark:text-sky-100/75">
+                <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4 font-mono text-xs text-cyan-400/70">
                   Perform a private transaction to see its logs here.
                 </div>
               ) : (

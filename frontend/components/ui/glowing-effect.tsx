@@ -57,13 +57,6 @@ const GlowingEffect = memo(
 
           if (alwaysOn) {
             element.style.setProperty("--active", "1");
-            // For always on, we can optionally just animate it automatically or let it follow mouse
-            // If we want it to just 'move', we might need a continuous animation loop not dependent on mouse
-            // But for now, let's keep the mouse interaction logic or default center if mouse is far?
-            // Actually, if alwaysOn is true, let's just make sure it stays visible.
-            // If we want continuous animation without mouse, we'd need a different effect (like the BorderBeam).
-            // However, the request is to use THIS effect.
-            // Let's assume 'alwaysOn' just means opacity is 1, but movement still follows mouse or defaults.
           } else {
             const center = [left + width * 0.5, top + height * 0.5];
             const distanceFromCenter = Math.hypot(
@@ -95,14 +88,6 @@ const GlowingEffect = memo(
           let targetAngle = currentAngle;
 
           if (alwaysOn) {
-            // If always on and no mouse event (e.g. init), maybe auto rotate?
-            // Or just use mouse position even if far away.
-            // Let's rely on the global mouse listener.
-            // But if we want it to 'move' continuously like a loading spinner when idle, that's different.
-            // The user said "replace animation... with animation of the cards".
-            // The cards follow the mouse.
-            // But "borders show everytime not when hovered on".
-            // So we just bypass the active check.
             targetAngle =
               (180 * Math.atan2(mouseY - center[1], mouseX - center[0])) /
                 Math.PI +
@@ -159,7 +144,7 @@ const GlowingEffect = memo(
             "pointer-events-none absolute -inset-px hidden rounded-[inherit] border opacity-0 transition-opacity",
             glow && "opacity-100",
             variant === "white" && "border-white",
-            disabled && "!block",
+            disabled && "block!",
           )}
         />
         <div
@@ -180,7 +165,7 @@ const GlowingEffect = memo(
                   var(--black) calc(25% / var(--repeating-conic-gradient-times))
                 )`
                   : variant === "blue"
-                  ? `radial-gradient(circle, #22d3ee 10%, #22d3ee00 20%),
+                    ? `radial-gradient(circle, #22d3ee 10%, #22d3ee00 20%),
                 radial-gradient(circle at 40% 40%, #06b6d4 5%, #06b6d400 15%),
                 radial-gradient(circle at 60% 60%, #0891b2 10%, #0891b200 20%), 
                 radial-gradient(circle at 40% 60%, #67e8f9 10%, #67e8f900 20%),
@@ -192,7 +177,7 @@ const GlowingEffect = memo(
                   #67e8f9 calc(75% / var(--repeating-conic-gradient-times)),
                   #22d3ee calc(100% / var(--repeating-conic-gradient-times))
                 )`
-                  : `radial-gradient(circle, #3df29a 10%, #3df29a00 20%),
+                    : `radial-gradient(circle, #3df29a 10%, #3df29a00 20%),
                 radial-gradient(circle at 40% 40%, #10b981 5%, #10b98100 15%),
                 radial-gradient(circle at 60% 60%, #059669 10%, #05966900 20%), 
                 radial-gradient(circle at 40% 60%, #34d399 10%, #34d39900 20%),
@@ -209,18 +194,18 @@ const GlowingEffect = memo(
           className={cn(
             "pointer-events-none absolute inset-0 rounded-[inherit] opacity-100 transition-opacity",
             glow && "opacity-100",
-            blur > 0 && "blur-(--blur) ",
+            blur > 0 && "blur-(--blur)",
             className,
-            disabled && "!hidden",
+            disabled && "hidden!",
           )}
         >
           <div
             className={cn(
               "glow",
               "rounded-[inherit]",
-              'after:content-[""] after:rounded-[inherit] after:absolute after:inset-[calc(-1*var(--glowingeffect-border-width))]',
+              'after:absolute after:inset-[calc(-1*var(--glowingeffect-border-width))] after:rounded-[inherit] after:content-[""]',
               "after:[border:var(--glowingeffect-border-width)_solid_transparent]",
-              "after:[background:var(--gradient)] after:bg-fixed",
+              "after:bg-fixed after:[background:var(--gradient)]",
               "after:opacity-(--active) after:transition-opacity after:duration-300",
               "after:[mask-clip:padding-box,border-box]",
               "after:mask-intersect",

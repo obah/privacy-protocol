@@ -48,10 +48,7 @@ export const Navbar = () => {
 
         <div className="hidden items-center gap-4 md:flex">
           <Link
-            href={
-              process.env.NEXT_PUBLIC_DOCS_URL ??
-              "https://privacy-protocol-hi8x.vercel.app/docs"
-            }
+            href="/docs"
             target="_blank"
             className="hover:text-primary rounded-sm px-4 py-2 text-sm font-medium backdrop-blur-xs transition-colors"
           >
