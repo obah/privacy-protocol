@@ -30,7 +30,7 @@ Chain ID: `421614`
 | PrivacyProtocolPool | `0xA0806cf43f5E9A2C42c8291676EE814b39A6413e` |
 | DemoDao             | `0x0B25AbD0136f6Ed5C220604Ec27026522515194f` |
 | DemoDefi            | `0xA8DCc58D83Cae0FfF1076832Ef7E5a5D9B96D9d7` |
-| HonkVerifier        | `0x4eE4661b8Ad32Ca08fED028Fe1490303f6D61BDA` |
+| HonkVerifier        | `0xb8900D83D599d4378E12F1DcD93d853BBDe7c82f` |
 
 Source: `contracts/src/Constants.sol`
 
