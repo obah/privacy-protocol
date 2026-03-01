@@ -1,84 +1,61 @@
-# Privacy Protocol
+# Privacy Protocol: ZK-Middleware for the EVM
 
-Privacy Protocol is a relayer-first privacy middleware for EVM dApps built on Arbitrum.  
-It lets developers easily build confidential dApps by adding an incognito execution path to new and existing dApps without rewriting their core contracts or building custom ZK systems from scratch.
+Privacy Protocol is a developer-first middleware SDK that enables confidential execution for any EVM dApp. It allows developers to add an incognito path to their applications without requiring users to leave the host chain or developers to write custom ZK circuits.
 
-## What It Includes
+By abstracting the complexity of Noir-based ZK-proofs and Rust relayers, we provide "Confidentiality-as-a-Service" for the next generation of privacy-preserving applications.
 
-- Privacy pool contracts for note-based private execution.
-- Noir circuits for proof generation and verification.
-- Browser-ready TypeScript SDK package (`privacy-protocol`) with `privacy-protocol/core` and `privacy-protocol/hooks`.
-- Rust relayer service for batching and on-chain submission.
-- Next.js demo frontend (DAO voting + DeFi swap) showing public vs private flow.
+## The Problem
+
+Current privacy solutions require developers to build on specific "privacy chains" or master complex cryptography. This creates fragmentation and high barriers to entry. Privacy Protocol fixes this by bringing privacy to where the liquidity and users already are—starting with the Arbitrum ecosystem.
+
+## Key Features
+
+- **Zero-Knowledge Abstraction**: Build with ZK-privacy using standard TypeScript/React hooks. No Noir or Solidity circuit-writing required.
+- **Relayer-First Architecture**: Our Rust-based relayer completely decouples the user's wallet address from their on-chain action, ensuring 100% metadata privacy.
+- **Note-Based Privacy Pool**: Robust deposit/withdrawal logic using a privacy pool for secure, anonymous asset management.
+- **Ephemeral Proxies**: High-security execution path that prevents linkage between historical transactions and current actions.
 
 ## Tech Stack
 
-| Layer     | Stack                                                            |
-| --------- | ---------------------------------------------------------------- |
-| Contracts | Solidity, Foundry                                                |
-| Circuits  | Noir, Poseidon dependency                                        |
-| SDK       | TypeScript, Ethers, `@noir-lang/noir_js`, `@aztec/bb.js`, `tsup` |
-| Relayer   | Rust, Axum, Tokio, Ethers-rs, Serde, Tracing                     |
-| Frontend  | Next.js, TypeScript, Wagmi, Viem, ConnectKit, Tailwind CSS       |
+| Layer     | Technology          | Role                                                   |
+| --------- | ------------------- | ------------------------------------------------------ |
+| Contracts | Solidity / Foundry  | Privacy pools, Verifiers, and Demo logic.              |
+| Circuits  | Noir / Aztec        | Privacy-preserving proof generation and verification.  |
+| SDK       | TypeScript / Ethers | Frontend integration (/core) and React Hooks (/hooks). |
+| Relayer   | Rust / Axum / Tokio | Secure, off-chain batching and transaction submission. |
+| Frontend  | Next.js / Tailwind  | Developer dashboard and demonstration suite.           |
 
-## Deployments (Arbitrum Sepolia)
+## SDK Quick Start
 
-Chain ID: `421614`
+Integrating privacy into your dApp is now a few lines of code:
 
-| Contract            | Address                                      |
-| ------------------- | -------------------------------------------- |
-| PrivacyProtocolPool | `0xA0806cf43f5E9A2C42c8291676EE814b39A6413e` |
-| DemoDao             | `0x0B25AbD0136f6Ed5C220604Ec27026522515194f` |
-| DemoDefi            | `0xA8DCc58D83Cae0FfF1076832Ef7E5a5D9B96D9d7` |
-| HonkVerifier        | `0xb8900D83D599d4378E12F1DcD93d853BBDe7c82f` |
+```typescript
+import { useDeposit, useExecuteAction } from "privacy-protocol/hooks";
 
-Source: `contracts/src/Constants.sol`
+const config = { poolAddress, provider, signer };
+const { deposit } = useDeposit(config);
+const { executeAction } = useExecuteAction(config);
 
-### Public Infra Endpoints
-
-- Relayer endpoint: `https://privacy-protocol-relayer.onrender.com/relay`
-- Explorer: `https://sepolia.arbiscan.io`
-- Docs site: `https://privacy-protocol-hi8x.vercel.app/docs`
-
-## Frontend Setup (Only)
-
-This section is only for running the demo frontend locally, after cloning the repo.
-
-### 1. Install dependencies
-
-```bash
-cd frontend
-npm install --legacy-peer-deps
+const depositResult = await deposit({ token, amount });
+const result = await executeAction({
+  token,
+  amount,
+  target,
+  data,
+  secret: depositResult.secret,
+  nullifier: depositResult.nullifier,
+  amountInPool: amount,
+});
 ```
 
-### 2. Configure environment
+## Roadmap
 
-Create `frontend/.env.local`:
+We are currently in a successful testing phase on Arbitrum Sepolia. Our goals for this funding cycle include:
 
-```bash
-NEXT_PUBLIC_WALLET_ID=<your_walletconnect_project_id>
-NEXT_PUBLIC_ALCHEMY_ID=<your_alchemy_api_key>
-```
+- **Production Deployment**: Migrating core contracts to Ethereum Mainnet and Sepolia.
+- **Relayer Decentralization**: Transitioning the Rust relayer into a permissionless network of operators.
+- **Cross-Chain Capability**: Expanding the SDK to support seamless private transactions across multiple L2s.
 
-Optional overrides:
+## 🤝 Contributing
 
-```bash
-NEXT_PUBLIC_DOCS_URL=https://privacy-protocol-hi8x.vercel.app/docs
-NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_URL=https://privacy-protocol-relayer.onrender.com
-NEXT_PUBLIC_PRIVACY_PROTOCOL_RELAYER_ENDPOINT=/relay
-```
-
-### 3. Run the app
-
-```bash
-npm run dev
-```
-
-Open `http://localhost:3000`.
-
-### 4. Production build check
-
-```bash
-npm run build
-npm start
-```
+Thank you for considering contributing! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
